@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { RequireAuth, RequireRoom } from './components/guards'
+import { RequireAuth, RequireFlag, RequireRoom } from './components/guards'
 import { AppLayout, OnboardingLayout, PublicLayout } from './components/Layout'
 import {
   AddChorePage,
@@ -63,10 +63,13 @@ export default function App() {
           <Route path="chores/:choreId" element={<ChoreDetailPage />} />
           <Route path="chores/:choreId/assign" element={<AssignChorePage />} />
           <Route path="chores/:choreId/done" element={<ChoreDonePage />} />
-          <Route path="money" element={<MoneyPage />} />
-          <Route path="money/new" element={<LogIouPage />} />
-          <Route path="money/ious/:iouId" element={<IouDetailPage />} />
-          <Route path="money/settle/:userId" element={<SettleUpPage />} />
+          {/* Money is behind the `money` flag; with it off, every /money page goes to the room home. */}
+          <Route element={<RequireFlag flag="money" to="/room" />}>
+            <Route path="money" element={<MoneyPage />} />
+            <Route path="money/new" element={<LogIouPage />} />
+            <Route path="money/ious/:iouId" element={<IouDetailPage />} />
+            <Route path="money/settle/:userId" element={<SettleUpPage />} />
+          </Route>
           <Route path="inbox" element={<InboxPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>

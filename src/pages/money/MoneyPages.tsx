@@ -11,7 +11,8 @@ import { Tag } from '../../components/Tag'
 import { Toast, type ToastState } from '../../components/Toast'
 import { useApp } from '../../data/store'
 import type { Iou } from '../../data/types'
-import { activityLink, describeActivity } from '../../lib/activity'
+import { activityLink, describeActivity, isMoneyActivity } from '../../lib/activity'
+import { useFlag } from '../../lib/flags'
 import { iouValue, moneyBalance, openIousBetween, paidMarkNeeded } from '../../lib/balances'
 import { formatDate, formatMoney, formatTimestamp } from '../../lib/format'
 
@@ -560,7 +561,10 @@ export function SettleUpPage() {
 
 export function InboxPage() {
   const { state, me, room, nameOf, markInboxRead, markActivityRead } = useApp()
-  const items = state.activity.filter((a) => a.roomId === room!.id && a.notify.includes(me!.id))
+  const moneyOn = useFlag('money')
+  const items = state.activity.filter(
+    (a) => a.roomId === room!.id && a.notify.includes(me!.id) && (moneyOn || !isMoneyActivity(a)),
+  )
   const hasUnread = items.some((a) => !a.readBy.includes(me!.id))
 
   return (

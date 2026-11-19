@@ -1,6 +1,8 @@
 import { useEffect, type ReactNode } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useApp } from '../data/store'
+import { isMoneyActivity } from '../lib/activity'
+import { useFlag } from '../lib/flags'
 import { Avatar } from './Avatar'
 import { buttonClass } from './Button'
 import { NudgePopup } from './NudgePopup'
@@ -87,11 +89,14 @@ export function OnboardingLayout() {
 
 export function AppLayout() {
   const { me, room, state } = useApp()
-  const unread = state.activity.filter((a) => a.notify.includes(me!.id) && !a.readBy.includes(me!.id)).length
+  const moneyOn = useFlag('money')
+  const unread = state.activity.filter(
+    (a) => a.notify.includes(me!.id) && !a.readBy.includes(me!.id) && (moneyOn || !isMoneyActivity(a)),
+  ).length
   const links = [
     { to: '/room', label: 'Home' },
     { to: '/chores', label: 'Chores' },
-    { to: '/money', label: 'Money' },
+    ...(moneyOn ? [{ to: '/money', label: 'Money' }] : []),
     { to: '/inbox', label: unread ? `Inbox (${unread})` : 'Inbox' },
   ]
   return (

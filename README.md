@@ -39,11 +39,12 @@ A clickable low-fidelity prototype of the roommate happy path: onboarding, share
 - **Reset**: clear everything and start from the homepage.
 - **Feature flags**: turn unfinished features on or off in this browser (see below).
 
-**Feature flags.** Flags live in `src/lib/flags.ts`. Each one is off unless its `VITE_FLAG_<NAME>` env var is `true` (for example `VITE_FLAG_HOME_VIEWS=true npm run dev`, or set it in Vercel), and the checkbox in the prototype bar overrides that in your browser. The demo room ignores the checkbox and only follows the env var. Deployed builds also read `.env.production`, which currently turns on `VITE_FLAG_HOME_VIEWS`; delete that line to deploy the original home again.
+**Feature flags.** Flags live in `src/lib/flags.ts`. Each one is off unless its `VITE_FLAG_<NAME>` env var is `true` (for example `VITE_FLAG_HOME_VIEWS=true npm run dev`, or set it in Vercel), and the checkbox in the prototype bar overrides that in your browser. The demo room ignores the Personal / shared checkbox and only follows its env var; the Money checkbox applies everywhere, demo room included. Deployed builds also read `.env.production`, which currently turns on `VITE_FLAG_HOME_VIEWS`; delete that line to deploy the original home again.
 
 | Flag | Env var | What it does |
 | --- | --- | --- |
 | Personal / shared home | `VITE_FLAG_HOME_VIEWS` | Adds a Personal / Shared toggle to the room home. Personal shows your chores and IOUs; Shared shows upcoming chores around the room and room activity. Each view is customized on its own. |
+| Money / IOUs | `VITE_FLAG_MONEY` | Off by default. Shows the Money page, the money home widget, IOU activity and inbox items. When off, all of that is hidden and `/money/*` redirects to `/room`. No money code is removed. |
 
 Sign-in is simulated: passwords aren't checked or saved, and "Continue with your school account" just asks for a `.edu` email.
 

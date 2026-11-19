@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Navigate, Outlet, useLocation, useMatch } from 'react-router-dom'
 import { useApp } from '../data/store'
+import { useFlag, type Flag } from '../lib/flags'
 
 /** Signs a logged-out visitor in to the demo room. RequireRoom re-renders once they're in. */
 function EnterDemo() {
@@ -27,6 +28,13 @@ export function RequireRoom() {
   if (!me) return atRoomHome ? <EnterDemo /> : <Navigate to="/login" replace />
   if (!me.name) return <Navigate to="/welcome/profile" replace />
   if (!room) return <Navigate to="/welcome/room" replace />
+  return <Outlet />
+}
+
+/** Pages behind a feature flag. With the flag off, they redirect to `to`. */
+export function RequireFlag({ flag, to }: { flag: Flag; to: string }) {
+  const on = useFlag(flag)
+  if (!on) return <Navigate to={to} replace />
   return <Outlet />
 }
 

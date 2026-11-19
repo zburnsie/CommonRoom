@@ -47,6 +47,11 @@ export function describeActivity(a: Activity, nameOf: NameOf, viewerId?: UserId)
   }
 }
 
+/** IOU activity, hidden everywhere while the `money` flag is off. */
+export function isMoneyActivity(a: Activity): boolean {
+  return a.kind.startsWith('iou-')
+}
+
 export function activityLink(a: Activity): string | null {
   if (a.choreId) return `/chores/${a.choreId}`
   if (a.iouId) return `/money/ious/${a.iouId}`

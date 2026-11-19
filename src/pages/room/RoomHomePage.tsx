@@ -315,7 +315,9 @@ export function RoomHomePage() {
   const flagOn = useFlag('homeViews')
   const viewsOn = room?.id === demoRoomId ? isFlagOnForProject('homeViews') : flagOn
   const view = viewsOn ? (me!.homeView ?? 'personal') : null
-  const widgets = view ? homeViews[view].widgets : allWidgets
+  // Without the money flag, the money widget is left out of every view and layout.
+  const moneyOn = useFlag('money')
+  const widgets = (view ? homeViews[view].widgets : allWidgets).filter((w) => moneyOn || w !== 'money')
   const defaultLayout = view ? homeViews[view].defaultLayout : defaultHomeLayout
   const layout = normalizeHomeLayout(view ? me!.homeViews?.[view] : me!.home, widgets, defaultLayout)
 
