@@ -1,11 +1,21 @@
 import type { ButtonHTMLAttributes } from 'react'
 import { Link, type LinkProps } from 'react-router-dom'
 
+/**
+ * One look per level of importance, so it's always clear what's clickable:
+ * - primary: the main action on a screen (light blue)
+ * - secondary: every other action (white with a border), including small chips and toggles
+ * - confirm / danger: yes-it's-done and destructive actions
+ * `accent` and `highlight` are kept for older code; `accent` is the same as primary and
+ * `highlight` should not be used for buttons (use a `Tag` with tone="action" for "needs you").
+ */
 type Variant = 'primary' | 'secondary' | 'accent' | 'confirm' | 'highlight' | 'danger'
 
+const primary = 'bg-accent text-ink border-accent-edge hover:brightness-95'
+
 const variants: Record<Variant, string> = {
-  primary: 'bg-accent text-ink border-accent-edge hover:brightness-95',
-  accent: 'bg-accent text-ink border-accent-edge hover:brightness-95',
+  primary,
+  accent: primary,
   confirm: 'bg-positive text-on-color border-positive hover:brightness-95',
   highlight: 'bg-highlight text-ink border-highlight hover:brightness-95',
   danger: 'bg-danger text-on-color border-danger hover:brightness-95',

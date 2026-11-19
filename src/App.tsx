@@ -12,7 +12,7 @@ import {
   CreateChoreListPage,
   EditChoreListPage,
 } from './pages/chores/ChorePages'
-import { InboxPage, IouDetailPage, LogIouPage, MoneyPage, SettleUpPage } from './pages/money/MoneyPages'
+import { IouDetailPage, LogIouPage, MoneyPage, SettleUpPage } from './pages/money/MoneyPages'
 import {
   CreateProfilePage,
   CreateRoomPage,
@@ -70,7 +70,8 @@ export default function App() {
             <Route path="money/ious/:iouId" element={<IouDetailPage />} />
             <Route path="money/settle/:userId" element={<SettleUpPage />} />
           </Route>
-          <Route path="inbox" element={<InboxPage />} />
+          {/* The inbox is now the Updates section on the room home. */}
+          <Route path="inbox" element={<Navigate to="/room" replace />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Route>

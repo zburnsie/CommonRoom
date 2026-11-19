@@ -161,7 +161,7 @@ function AreaMembersPicker({ picker }: { picker: ReturnType<typeof useAreaMember
       {!picker.everyone && (
         <div className="flex flex-wrap gap-2 pt-2">
           {members.map((m) => (
-            <label key={m.id} className="text-label flex cursor-pointer items-center gap-2 rounded-pill border border-rule bg-paper py-1 pl-1 pr-4 has-[:checked]:border-ink">
+            <label key={m.id} className="text-label flex cursor-pointer items-center gap-2 rounded-pill border border-rule bg-surface py-1 pl-1 pr-4 has-[:checked]:border-ink">
               <input type="checkbox" className="sr-only" checked={picker.picked.includes(m.id)} onChange={() => picker.toggle(m.id)} />
               <Avatar user={m} size="sm" />
               {m.id === me!.id ? 'You' : m.name}
@@ -200,8 +200,7 @@ export function ChoresIndexPage() {
 
       {lists.length === 0 ? (
         <EmptyState title="No areas yet">
-          <p className="text-body text-ink-muted">Start with the kitchen, a bathroom, or a spare room you all use.</p>
-          <ButtonLink to="/chores/lists/new">Add an area</ButtonLink>
+          <p className="text-body text-ink-muted">Start with the kitchen, a bathroom, or a spare room you all use. Use New Area above.</p>
         </EmptyState>
       ) : (
         <Section title="Areas">
@@ -307,7 +306,6 @@ export function ChoresOverviewPage() {
         <ChoresTop />
         <EmptyState title="Nothing to show yet">
           <p className="text-body text-ink-muted">Add an area and some chores, and you’ll see who’s doing what here.</p>
-          <ButtonLink to="/chores/lists/new">Add an area</ButtonLink>
         </EmptyState>
       </>
     )
@@ -450,7 +448,7 @@ export function CreateChoreListPage() {
           </Field>
           <div className="flex flex-wrap gap-2">
             {['Kitchen', 'Bathroom', 'Living room', 'Spare room', 'Laundry'].map((idea) => (
-              <button key={idea} type="button" className="text-caption rounded-pill border border-rule bg-paper px-2 py-1 hover:border-ink" onClick={() => setName(idea)}>
+              <button key={idea} type="button" className="text-caption rounded-pill border border-rule bg-surface px-2 py-1 hover:border-ink" onClick={() => setName(idea)}>
                 {idea}
               </button>
             ))}
@@ -549,8 +547,7 @@ export function ChoreListPage() {
       <Section title="To do">
         {toDo.length === 0 ? (
           <EmptyState title={done.length > 0 ? 'All caught up' : 'No chores here yet'}>
-            <p className="text-body text-ink-muted">Add one, give it a due date, and pick who’s doing it.</p>
-            <ButtonLink to={`/chores/lists/${list.id}/add`}>Add a chore</ButtonLink>
+            <p className="text-body text-ink-muted">Use Add a chore above, give it a due date, and pick who’s doing it.</p>
           </EmptyState>
         ) : (
           <ul className="flex flex-col gap-2">
@@ -605,7 +602,7 @@ export function AddChorePage() {
               </Field>
               <div className="flex flex-wrap gap-2">
                 {[0, 1, 7].map((n) => (
-                  <button key={n} type="button" className="text-caption rounded-pill border border-rule bg-paper px-2 py-1 hover:border-ink" onClick={() => setDueDate(addDays(todayIso(), n))}>
+                  <button key={n} type="button" className="text-caption rounded-pill border border-rule bg-surface px-2 py-1 hover:border-ink" onClick={() => setDueDate(addDays(todayIso(), n))}>
                     {n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : 'In a week'}
                   </button>
                 ))}
@@ -693,7 +690,7 @@ export function AssignChorePage() {
             <p className="text-body pb-2 text-ink-muted">When a turn is marked complete, the chore moves to the next person here.</p>
             <div className="flex flex-wrap gap-2">
               {people.map((m) => (
-                <label key={m.id} className="text-label flex items-center gap-1 rounded-pill border border-rule bg-paper px-2 py-1">
+                <label key={m.id} className="text-label flex items-center gap-1 rounded-pill border border-rule bg-surface px-2 py-1">
                   <input
                     type="checkbox"
                     className="accent-accent"

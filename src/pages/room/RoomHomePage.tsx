@@ -9,6 +9,7 @@ import { CompleteButton } from '../../components/CompleteButton'
 import { ConfettiToast } from '../../components/ConfettiToast'
 import { canNudge, NudgeButton } from '../../components/NudgeButton'
 import { ChoiceRow } from '../../components/fields'
+import { Updates } from '../../components/Updates'
 import { EmptyState, Flash } from '../../components/PageHeader'
 import { Tag } from '../../components/Tag'
 import { demoRoomId } from '../../data/seed'
@@ -79,11 +80,7 @@ function ChoresWidget({ size, chores, onComplete }: { size: Size; chores: Chore[
           ))}
         </ul>
       )}
-      {more > 0 && (
-        <Link to="/chores" className="text-label text-ink-muted hover:text-ink">
-          + {more} more assigned to you
-        </Link>
-      )}
+      {more > 0 && <p className="text-label text-ink-muted">+ {more} more assigned to you</p>}
     </section>
   )
 }
@@ -109,14 +106,10 @@ function MoneyWidget({ size }: { size: Size }) {
     return (
       <section className="flex flex-col gap-2">
         <h2 className="text-caption text-ink-muted">Balance</h2>
-        <div className="grid grid-cols-2 gap-2">
-          <Link to="/money" className="rounded-md border border-rule bg-paper px-4 py-2 text-body text-ink-muted hover:border-ink">
-            {balanceLabel}
-          </Link>
-          <Link to="/money" className="rounded-md border border-rule bg-paper px-4 py-2 text-body text-ink-muted hover:border-ink">
-            Needs OK: <span className="text-amount">{needsOk}</span>
-          </Link>
-        </div>
+        <Link to="/money" className="flex flex-wrap justify-between gap-2 rounded-md border border-rule bg-surface px-4 py-2 text-body text-ink-muted hover:border-ink">
+          <span>{balanceLabel}</span>
+          <span>Needs OK: <span className="text-amount">{needsOk}</span></span>
+        </Link>
       </section>
     )
   }
@@ -156,11 +149,7 @@ function MoneyWidget({ size }: { size: Size }) {
       )}
       <div className="flex flex-wrap items-center gap-2">
         <ButtonLink to="/money/new">Log an IOU</ButtonLink>
-        {needsOk > 0 && (
-          <ButtonLink to="/money" variant="highlight">
-            {needsOk} {needsOk === 1 ? 'IOU needs' : 'IOUs need'} your OK
-          </ButtonLink>
-        )}
+        {needsOk > 0 && <Tag tone="action">{needsOk} {needsOk === 1 ? 'IOU needs' : 'IOUs need'} your OK</Tag>}
       </div>
     </section>
   )
@@ -196,11 +185,7 @@ function UpcomingWidget({ size, chores }: { size: Size; chores: Chore[] }) {
       ) : (
         <p className="text-body text-ink-muted">Nothing left to do around the room.</p>
       )}
-      {more > 0 && (
-        <Link to="/chores/overview" className="text-label text-ink-muted hover:text-ink">
-          + {more} more
-        </Link>
-      )}
+      {more > 0 && <p className="text-label text-ink-muted">+ {more} more in the house overview</p>}
     </>
   )
   const overviewLink = <Link to="/chores/overview" className="text-label underline">House overview</Link>
@@ -362,6 +347,8 @@ export function RoomHomePage() {
           </Button>
         )}
       </header>
+
+      <Updates />
 
       {view && <ViewToggle view={view} onChange={setHomeView} />}
 

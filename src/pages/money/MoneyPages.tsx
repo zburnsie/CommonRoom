@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
-import { ActivityList, ActivityMark } from '../../components/ActivityList'
+import { ActivityList } from '../../components/ActivityList'
 import { Avatar } from '../../components/Avatar'
 import { Button, ButtonLink } from '../../components/Button'
 import { Card, Section } from '../../components/Card'
@@ -11,10 +11,8 @@ import { Tag } from '../../components/Tag'
 import { Toast, type ToastState } from '../../components/Toast'
 import { useApp } from '../../data/store'
 import type { Iou } from '../../data/types'
-import { activityLink, describeActivity, isMoneyActivity } from '../../lib/activity'
-import { useFlag } from '../../lib/flags'
 import { iouValue, moneyBalance, openIousBetween, paidMarkNeeded } from '../../lib/balances'
-import { formatDate, formatMoney, formatTimestamp } from '../../lib/format'
+import { formatDate, formatMoney } from '../../lib/format'
 
 function useRoomIous() {
   const { state, room } = useApp()
@@ -99,7 +97,7 @@ function IouRow({ iou }: { iou: Iou }) {
       </Link>
       {needsMyConfirm && (
         <div className="flex flex-col px-4 pb-4 sm:py-4 sm:pl-0">
-          <ButtonLink to={`/money/ious/${iou.id}`} variant="confirm">Confirm</ButtonLink>
+          <Tag tone="action">Needs your OK</Tag>
         </div>
       )}
       {canMark && (
@@ -176,7 +174,7 @@ export function MoneyPage() {
                       ))}
                     </div>
                     {open.length > 0 ? (
-                      <ButtonLink to={`/money/settle/${m.id}`} variant={paidMarkNeeded(ious, me!.id, m.id) ? 'primary' : 'accent'} className="col-span-3">Settle up</ButtonLink>
+                      <ButtonLink to={`/money/settle/${m.id}`} variant={paidMarkNeeded(ious, me!.id, m.id) ? 'primary' : 'secondary'} className="col-span-3">Settle up</ButtonLink>
                     ) : (
                       <Button variant="secondary" disabled className="col-span-3">Settle up</Button>
                     )}
@@ -234,7 +232,7 @@ export function LogIouPage() {
         <PageHeader title="Log an IOU" back={{ to: '/money', label: 'Money' }} />
         <EmptyState title="No roommates yet">
           <p className="text-body text-ink-muted">IOUs are between you and a roommate. Invite someone first.</p>
-          <ButtonLink to="/room/invite" variant="accent">Invite roommates</ButtonLink>
+          <ButtonLink to="/room/invite" variant="primary">Invite roommates</ButtonLink>
         </EmptyState>
       </>
     )
@@ -283,7 +281,7 @@ export function LogIouPage() {
         </Card>
 
         <Card className="flex flex-col gap-4">
-          <div className="flex gap-1 self-start rounded-md border border-rule bg-paper p-1" role="radiogroup" aria-label="What kind of IOU">
+          <div className="flex gap-1 self-start rounded-md border border-rule bg-surface p-1" role="radiogroup" aria-label="What kind of IOU">
             {(['money', 'favor'] as const).map((k) => (
               <button
                 key={k}
@@ -291,7 +289,7 @@ export function LogIouPage() {
                 role="radio"
                 aria-checked={kind === k}
                 onClick={() => setKind(k)}
-                className={`text-label rounded-sm px-4 py-1 ${kind === k ? 'bg-sky text-ink' : 'text-ink-muted'}`}
+                className={`text-label rounded-sm px-4 py-1 ${kind === k ? 'bg-sky text-ink' : 'text-ink-muted hover:text-ink'}`}
               >
                 {k === 'money' ? 'Money' : 'Something else'}
               </button>
@@ -317,7 +315,7 @@ export function LogIouPage() {
           </p>
         )}
         <div>
-          <Button type="submit" variant="accent" disabled={!canSubmit}>Send to {otherName}</Button>
+          <Button type="submit" variant="primary" disabled={!canSubmit}>Send to {otherName}</Button>
         </div>
       </form>
     </>
@@ -353,7 +351,7 @@ function SuggestChangeForm({ iou, otherName, onCancel }: { iou: Iou; otherName: 
         </Field>
       )}
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" variant="accent" disabled={!changed}>Send to {otherName}</Button>
+        <Button type="submit" variant="primary" disabled={!changed}>Send to {otherName}</Button>
         <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
       </div>
     </form>
@@ -450,7 +448,7 @@ export function IouDetailPage() {
               {iou.paidMarks.includes(me!.id) && `You marked it paid. Waiting for ${nameOf(otherId)}.`}
               {iou.paidMarks.includes(otherId) && `${nameOf(otherId)} marked it paid. Confirm on the settle-up screen.`}
             </p>
-            <ButtonLink to={`/money/settle/${otherId}`} variant={iou.paidMarks.includes(otherId) && !iou.paidMarks.includes(me!.id) ? 'primary' : 'accent'}>Settle up</ButtonLink>
+            <ButtonLink to={`/money/settle/${otherId}`} variant={iou.paidMarks.includes(otherId) && !iou.paidMarks.includes(me!.id) ? 'primary' : 'secondary'}>Settle up</ButtonLink>
           </div>
         )}
         {iou.status === 'declined' && <p className="text-body text-ink-muted">This IOU was declined, so it doesn’t count toward anyone’s balance.</p>}
@@ -495,12 +493,10 @@ export function SettleUpPage() {
             <Tag tone="success">Settled</Tag>
             <h2 className="text-title">You and {name} are all square</h2>
             <p className="text-body text-ink-muted">You both marked everything as paid.</p>
-            <ButtonLink to="/money" variant="accent">Back to money</ButtonLink>
           </section>
         ) : (
           <EmptyState title="Nothing to settle">
             <p className="text-body text-ink-muted">You and {name} don’t have any open IOUs.</p>
-            <ButtonLink to="/money" variant="secondary">Back to money</ButtonLink>
           </EmptyState>
         )}
       </>
@@ -555,66 +551,6 @@ export function SettleUpPage() {
           </p>
         )}
       </Section>
-    </>
-  )
-}
-
-export function InboxPage() {
-  const { state, me, room, nameOf, markInboxRead, markActivityRead } = useApp()
-  const moneyOn = useFlag('money')
-  const items = state.activity.filter(
-    (a) => a.roomId === room!.id && a.notify.includes(me!.id) && (moneyOn || !isMoneyActivity(a)),
-  )
-  const hasUnread = items.some((a) => !a.readBy.includes(me!.id))
-
-  return (
-    <>
-      <PageHeader
-        title="Inbox"
-        action={hasUnread ? <Button variant="secondary" onClick={markInboxRead}>Mark all as read</Button> : undefined}
-      >
-        Chores assigned to you, reminders about your chores, IOUs to confirm, and payments.
-      </PageHeader>
-      {items.length === 0 ? (
-        <EmptyState title="Nothing new">
-          <p className="text-body text-ink-muted">You'll see a note here when a roommate assigns you a chore or logs an IOU with you.</p>
-        </EmptyState>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {items.map((a) => {
-            const link = activityLink(a)
-            const unread = !a.readBy.includes(me!.id)
-            // A reminder asks you to act until the chore is done or no longer yours.
-            const nudgeChore = a.kind === 'chore-nudged' || a.kind === 'chore-reminder' ? state.chores.find((c) => c.id === a.choreId) : undefined
-            const needsAction = !!nudgeChore && nudgeChore.assignedTo === me!.id && !nudgeChore.done
-            const body = (
-              <div className="flex items-center gap-4 p-4">
-                <ActivityMark activity={a} />
-                <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <span className="text-body">{describeActivity(a, nameOf, me!.id)}</span>
-                  <span className="text-caption text-ink-muted">{formatTimestamp(a.at)}</span>
-                </div>
-                {needsAction && <Tag tone="danger">Needs action</Tag>}
-                {unread && (
-                  <span className="inline-flex size-2 shrink-0 items-center justify-center">
-                    <span className="size-2 rounded-pill bg-sky" aria-hidden="true" />
-                    <span className="sr-only">Unread</span>
-                  </span>
-                )}
-                {link && <span className="text-ink-muted" aria-hidden="true">→</span>}
-              </div>
-            )
-            return (
-              <li
-                key={a.id}
-                className="rounded-md border border-rule bg-surface transition hover:border-ink"
-              >
-                {link ? <Link to={link} className="block" onClick={() => markActivityRead(a.id)}>{body}</Link> : body}
-              </li>
-            )
-          })}
-        </ul>
-      )}
     </>
   )
 }

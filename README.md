@@ -63,7 +63,7 @@ Sign-in is simulated: passwords aren't checked or saved, and "Continue with your
 | 7 | Join with a code (invite links `/join/CODE` land here) | `/welcome/join` |
 | 8 | Invite roommates (link / code) | `/welcome/invite`, `/room/invite` |
 | | **Room** | |
-| 9 | Room home: your chores, balance, IOUs to confirm, activity. **Customize** picks which is biggest, the order of the rest, and what to hide (saved per roommate) | `/room` |
+| 9 | Room home: **Updates** (unread notifications and reminders, hidden when there are none), your chores, balance, IOUs to confirm, activity. **Customize** picks which is biggest, the order of the rest, and what to hide (saved per roommate) | `/room` |
 | | **2. Shared chores** | |
 | 10 | Areas (kitchen, a shared bathroom…) and who shares each | `/chores` |
 | 11 | House overview: progress, chores done per roommate, what's still to do and whose turn | `/chores/overview` |
@@ -74,14 +74,15 @@ Sign-in is simulated: passwords aren't checked or saved, and "Continue with your
 | 16 | Assign roommate and rotation, from the area's roommates (assignee is notified) | `/chores/:choreId/assign` |
 | 17 | Chore detail: mark complete, rotation, done so far | `/chores/:choreId` |
 | 18 | Chore done: room sees it, next person in rotation | `/chores/:choreId/done` |
-| | **3. Money and IOUs** | |
+| | **3. Money and IOUs** (behind the `money` flag; redirect to `/room` when it's off) | |
 | 19 | Balances: who owes whom | `/money` |
 | 20 | Log an IOU ($ or "a dinner") | `/money/new` |
 | 21 | IOU detail: roommate confirms, declines, or suggests a different amount | `/money/ious/:iouId` |
 | 22 | Settle up: both mark as paid | `/money/settle/:userId` |
 | | **Other** | |
-| 23 | Inbox (notifications) | `/inbox` |
-| 24 | Profile and room settings | `/settings` |
+| 23 | Profile and room settings | `/settings` |
+
+`/inbox` used to be its own page; it now redirects to `/room`, where unread items show as Updates.
 
 **How areas work:** chores are grouped into areas, like the kitchen or a bathroom. An area is shared by everyone in the room (including roommates who join later) or just the roommates you pick, and only they are offered when assigning its chores or setting up a rotation. In the code an area is a `ChoreList` with `memberIds` (empty means everyone).
 
@@ -104,7 +105,7 @@ src/
     onboarding/       Profile, create/join room, invite
     room/             Room home, settings
     chores/           Lists, add, assign, detail, done
-    money/            Balances, log IOU, IOU detail, settle up, inbox
+    money/            Balances, log IOU, IOU detail, settle up
   data/
     types.ts          User, Room, ChoreList (area), Chore, ChoreCompletion, Iou, Activity types
     seed.ts           Empty state and the demo room

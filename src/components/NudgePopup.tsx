@@ -6,7 +6,7 @@ import { Button } from './Button'
 
 /**
  * Pops up when a roommate has sent you an anonymous reminder about a chore. Dismissing it or
- * opening the chore marks the nudge read; it stays in your inbox either way.
+ * opening the chore marks the reminder read.
  */
 export function NudgePopup() {
   const { state, me, room, nameOf, markActivityRead } = useApp()
@@ -42,7 +42,7 @@ export function NudgePopup() {
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <span className="text-caption text-ink-muted">Reminder</span>
             <p className="text-body">{describeActivity(nudge, nameOf, me!.id)}</p>
-            {more > 0 && <span className="text-caption text-ink-muted">+ {more} more in your inbox</span>}
+            {more > 0 && <span className="text-caption text-ink-muted">+ {more} more in Updates on your home page</span>}
           </div>
         </div>
         <div className="flex flex-wrap justify-end gap-2">
