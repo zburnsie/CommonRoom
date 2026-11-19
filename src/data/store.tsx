@@ -27,6 +27,8 @@ function load(): AppState {
       )
       // Older saves don't have area members; those areas are shared by everyone.
       state.choreLists = state.choreLists.map((l) => (l.memberIds ? l : { ...l, memberIds: [] }))
+      // Older saves don't have assignment requests; nothing is waiting to be accepted.
+      state.chores = state.chores.map((c) => ({ ...c, pendingAssignee: c.pendingAssignee ?? null, requestedBy: c.requestedBy ?? null }))
       return state
     }
   } catch {
@@ -71,7 +73,13 @@ type AppContextValue = {
   /** Deletes an area and its chores. Completed work stays in the house history. */
   deleteChoreList: (listId: string) => void
   addChore: (chore: { listId: string; title: string; notes: string; dueDate: string; repeat: Repeat }) => string
+  /**
+   * Gives a chore to someone. Yourself: it's yours right away. Anyone else: they get a request
+   * and it's theirs once they accept. Later turns in the rotation are handed on without asking.
+   */
   assignChore: (choreId: string, assignedTo: UserId, rotation: UserId[]) => void
+  /** Accepts or declines a chore someone asked you to take. Declining leaves it unassigned and tells them. */
+  respondToRequest: (choreId: string, accept: boolean) => void
   completeChore: (choreId: string) => void
   /** Sends whoever's turn it is an anonymous reminder. Once a day per chore, so it stays gentle. */
   nudgeChore: (choreId: string) => void
@@ -283,22 +291,65 @@ export function AppProvider({ children }: { children: ReactNode }) {
       })),
     addChore: (chore) => {
       const id = newId()
-      setState((s) => ({ ...s, chores: [...s.chores, { ...chore, id, rotation: [], assignedTo: null, done: false }] }))
+      setState((s) => ({
+        ...s,
+        chores: [...s.chores, { ...chore, id, rotation: [], assignedTo: null, pendingAssignee: null, requestedBy: null, done: false }],
+      }))
       return id
     },
     assignChore: (choreId, assignedTo, rotation) => {
       const chore = state.chores.find((c) => c.id === choreId)
       if (!chore) return
+      // Already theirs (they accepted before, or it's their turn in the rotation): just save the changes.
+      if (assignedTo === chore.assignedTo && assignedTo !== meId) {
+        setState((s) => updateChore(s, choreId, { rotation }))
+        return
+      }
+      if (assignedTo === meId) {
+        setState((s) =>
+          withActivity(updateChore(s, choreId, { assignedTo, rotation, pendingAssignee: null, requestedBy: null }), {
+            kind: 'chore-assigned', actor: meId, subject: assignedTo, label: chore.title, choreId,
+          }),
+        )
+        return
+      }
       setState((s) =>
-        withActivity(updateChore(s, choreId, { assignedTo, rotation }), {
-          kind: 'chore-assigned',
+        withActivity(updateChore(s, choreId, { assignedTo: null, rotation, pendingAssignee: assignedTo, requestedBy: meId }), {
+          kind: 'chore-requested',
           actor: meId,
           subject: assignedTo,
           label: chore.title,
           choreId,
-          notify: assignedTo === meId ? [] : [assignedTo],
+          notify: [assignedTo],
         }),
       )
+    },
+    respondToRequest: (choreId, accept) => {
+      const chore = state.chores.find((c) => c.id === choreId)
+      if (!chore || chore.pendingAssignee !== meId) return
+      const requester = chore.requestedBy
+      const patch: Partial<Chore> = accept
+        ? { assignedTo: meId, pendingAssignee: null, requestedBy: null }
+        : { assignedTo: null, rotation: [], pendingAssignee: null, requestedBy: null }
+      setState((s) => {
+        // The request itself has been dealt with, so it no longer shows as unread.
+        const handled: AppState = {
+          ...s,
+          activity: s.activity.map((a) =>
+            a.kind === 'chore-requested' && a.choreId === choreId && a.notify.includes(meId) && !a.readBy.includes(meId)
+              ? { ...a, readBy: [...a.readBy, meId] }
+              : a,
+          ),
+        }
+        return withActivity(updateChore(handled, choreId, patch), {
+          kind: accept ? 'chore-accepted' : 'chore-declined',
+          actor: meId,
+          subject: requester ?? undefined,
+          label: chore.title,
+          choreId,
+          notify: requester && requester !== meId ? [requester] : [],
+        })
+      })
     },
     completeChore: (choreId) => {
       const chore = state.chores.find((c) => c.id === choreId)

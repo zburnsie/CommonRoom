@@ -11,7 +11,7 @@ import { canNudge, NudgeButton } from '../../components/NudgeButton'
 import { ChoiceRow, Field, Select, TextArea, TextInput } from '../../components/fields'
 import { EmptyState, PageHeader } from '../../components/PageHeader'
 import { Toast, type ToastState } from '../../components/Toast'
-import { DueTag } from '../../components/status'
+import { DueTag, WaitingTag } from '../../components/status'
 import { Tag } from '../../components/Tag'
 import { useApp } from '../../data/store'
 import type { Chore, ChoreList, Repeat, UserId } from '../../data/types'
@@ -209,7 +209,7 @@ export function ChoresIndexPage() {
               const open = state.chores.filter((c) => c.listId === list.id && !c.done)
               // Roommates' missed chores only count once the grace period is over.
               const overdue = open.filter((c) => isLateFor(c, me!.id)).length
-              const unassigned = open.filter((c) => !c.assignedTo).length
+              const unassigned = open.filter((c) => !c.assignedTo && !c.pendingAssignee).length
               return (
                 <li key={list.id}>
                   <Link to={`/chores/lists/${list.id}`} className="flex h-full flex-col gap-2 rounded-md border border-rule bg-surface p-4 hover:border-ink">
@@ -289,13 +289,14 @@ export function ChoresOverviewPage() {
     }
   })
 
-  const toDo = who ? open.filter((c) => c.assignedTo === who) : open
+  const toDo = who ? open.filter((c) => c.assignedTo === who || (!c.assignedTo && c.pendingAssignee === who)) : open
   const groups = [
     { title: 'Overdue', chores: toDo.filter(overdue) },
     // Includes roommates' chores still in the grace period, which read as "due" rather than late.
     { title: 'Due in the next week', chores: toDo.filter((c) => c.assignedTo && !overdue(c) && daysUntil(c.dueDate) < 7) },
     { title: 'Later', chores: toDo.filter((c) => c.assignedTo && daysUntil(c.dueDate) >= 7) },
-    { title: 'Needs someone', chores: toDo.filter((c) => !c.assignedTo) },
+    { title: 'Waiting to be accepted', chores: toDo.filter((c) => !c.assignedTo && c.pendingAssignee) },
+    { title: 'Needs someone', chores: toDo.filter((c) => !c.assignedTo && !c.pendingAssignee) },
   ].filter((g) => g.chores.length > 0)
   const doneShown = who ? done.filter((c) => c.doneBy === who) : done
   const whoName = who ? nameOf(who) : ''
@@ -628,6 +629,8 @@ export function AddChorePage() {
   )
 }
 
+type AssignMode = 'rotate' | 'single'
+
 export function AssignChorePage() {
   const { chore, list } = useChore()
   const { me, members, nameOf, assignChore } = useApp()
@@ -635,20 +638,27 @@ export function AssignChorePage() {
   // Only roommates who share this area take turns on its chores.
   const people = list ? areaMembers(list, members) : members
   const peopleIds = people.map((m) => m.id)
+  const current = chore?.assignedTo ?? chore?.pendingAssignee
   const [assignee, setAssignee] = useState(
-    chore?.assignedTo && peopleIds.includes(chore.assignedTo) ? chore.assignedTo : peopleIds.includes(me!.id) ? me!.id : peopleIds[0],
+    current && peopleIds.includes(current) ? current : peopleIds.includes(me!.id) ? me!.id : peopleIds[0],
   )
+  // Repeating chores rotate between everyone by default, so no one has to hand them out each time.
+  const [mode, setMode] = useState<AssignMode>(chore && chore.rotation.length === 1 ? 'single' : 'rotate')
   const [rotation, setRotation] = useState<string[]>(
-    chore && chore.rotation.length > 0 ? chore.rotation : peopleIds,
+    chore && chore.rotation.length > 1 ? chore.rotation : peopleIds,
   )
   if (!chore || !list) return <Navigate to="/chores" replace />
 
   const repeating = chore.repeat !== 'none'
+  const rotating = repeating && mode === 'rotate'
   // The assignee is always in the rotation; keep room order for everyone else.
-  const finalRotation = repeating
+  const finalRotation = rotating
     ? peopleIds.filter((id) => rotation.includes(id) || id === assignee)
     : [assignee]
   const preview = upcomingTurns({ ...chore, assignedTo: assignee, rotation: finalRotation }, 4)
+  // Someone else needs to accept, unless it's already theirs.
+  const asking = assignee !== me!.id && assignee !== chore.assignedTo
+  const name = nameOf(assignee)
 
   const toggle = (id: string) =>
     setRotation((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]))
@@ -657,9 +667,35 @@ export function AssignChorePage() {
     e.preventDefault()
     assignChore(chore.id, assignee, finalRotation)
     navigate(`/chores/${chore.id}`, {
-      state: toast(assignee === me!.id ? `“${chore.title}” is on your list.` : `Assigned “${chore.title}” to ${nameOf(assignee)}. They were notified.`),
+      state: toast(
+        asking
+          ? `Asked ${name} to take “${chore.title}”. It’s theirs once they accept.`
+          : assignee !== me!.id
+            ? 'Saved.'
+            : rotating
+            ? `Rotation set. You’re up first on “${chore.title}”.`
+            : `“${chore.title}” is on your list.`,
+      ),
     })
   }
+
+  const whoPicker = (
+    <>
+      {list.memberIds.length > 0 && (
+        <p className="text-body pb-2 text-ink-muted">
+          {list.name} is shared by {joinNames(people.map((p) => nameOf(p.id, true)))}. <Link to={`/chores/lists/${list.id}/edit`} className="underline">Change who shares it</Link>
+        </p>
+      )}
+      {people.map((m) => (
+        <ChoiceRow key={m.id} type="radio" name="assignee" checked={assignee === m.id} onChange={() => setAssignee(m.id)}>
+          <span className="flex items-center gap-2">
+            <Avatar user={m} size="sm" />
+            <span className="text-body">{m.id === me!.id ? 'You' : m.name}</span>
+          </span>
+        </ChoiceRow>
+      ))}
+    </>
+  )
 
   return (
     <>
@@ -667,26 +703,22 @@ export function AssignChorePage() {
         “{chore.title}” · due {formatDate(chore.dueDate)} · {repeatLabels[chore.repeat].toLowerCase()}
       </PageHeader>
       <form onSubmit={handleSubmit} className="flex flex-col gap-8">
-        <fieldset className="flex flex-col gap-2">
-          <legend className="text-heading pb-2">{repeating ? 'First turn' : 'Assign to'}</legend>
-          {list.memberIds.length > 0 && (
-            <p className="text-body pb-2 text-ink-muted">
-              {list.name} is shared by {joinNames(people.map((p) => nameOf(p.id, true)))}. <Link to={`/chores/lists/${list.id}/edit`} className="underline">Change who shares it</Link>
-            </p>
-          )}
-          {people.map((m) => (
-            <ChoiceRow key={m.id} type="radio" name="assignee" checked={assignee === m.id} onChange={() => setAssignee(m.id)}>
-              <span className="flex items-center gap-2">
-                <Avatar user={m} size="sm" />
-                <span className="text-body">{m.id === me!.id ? 'You' : m.name}</span>
-              </span>
-            </ChoiceRow>
-          ))}
-        </fieldset>
-
-        {repeating && (
+        {repeating && people.length > 1 && (
           <fieldset className="flex flex-col gap-2">
-            <legend className="text-heading">Rotation</legend>
+            <legend className="text-heading pb-2">How should turns work?</legend>
+            <ChoiceRow type="radio" name="mode" checked={mode === 'rotate'} onChange={() => setMode('rotate')}>
+              <span className="text-body">Rotate between roommates</span>
+              <span className="text-body text-ink-muted">Each time it’s done, it moves to the next person. No one has to hand it out.</span>
+            </ChoiceRow>
+            <ChoiceRow type="radio" name="mode" checked={mode === 'single'} onChange={() => setMode('single')}>
+              <span className="text-body">Same person every time</span>
+            </ChoiceRow>
+          </fieldset>
+        )}
+
+        {rotating ? (
+          <fieldset className="flex flex-col gap-2">
+            <legend className="text-heading">Who’s in the rotation</legend>
             <p className="text-body pb-2 text-ink-muted">When a turn is marked complete, the chore moves to the next person here.</p>
             <div className="flex flex-wrap gap-2">
               {people.map((m) => (
@@ -702,6 +734,10 @@ export function AssignChorePage() {
                 </label>
               ))}
             </div>
+            <fieldset className="flex flex-col gap-2 pt-4">
+              <legend className="text-label pb-2">Who goes first</legend>
+              {whoPicker}
+            </fieldset>
             <Card className="mt-2 flex flex-col gap-2">
               <span className="text-caption text-ink-muted">Next turns</span>
               <ol className="flex flex-col gap-1">
@@ -714,10 +750,23 @@ export function AssignChorePage() {
               </ol>
             </Card>
           </fieldset>
+        ) : (
+          <fieldset className="flex flex-col gap-2">
+            <legend className="text-heading pb-2">{repeating ? 'Who does it' : 'Assign to'}</legend>
+            {whoPicker}
+          </fieldset>
         )}
 
-        <div>
-          <Button type="submit">{assignee === me!.id ? 'Assign to me' : `Assign and notify ${nameOf(assignee)}`}</Button>
+        <div className="flex flex-col items-start gap-2">
+          {asking && (
+            <p className="text-body text-ink-muted">
+              {name} gets a request to accept or decline. Until then it shows as waiting on {name}
+              {rotating ? '. After that, later turns pass along on their own.' : '.'}
+            </p>
+          )}
+          <Button type="submit">
+            {asking ? `Send request to ${name}` : assignee !== me!.id ? 'Save' : rotating ? 'Start rotation' : 'Assign to me'}
+          </Button>
         </div>
       </form>
     </>
@@ -726,11 +775,12 @@ export function AssignChorePage() {
 
 export function ChoreDetailPage() {
   const { chore, list } = useChore()
-  const { state, me, nameOf, userOf, completeChore, reopenChore, deleteChore } = useApp()
+  const { state, me, nameOf, userOf, completeChore, reopenChore, deleteChore, respondToRequest } = useApp()
   const navigate = useNavigate()
   if (!chore || !list) return <Navigate to="/chores" replace />
 
-  const assignee = chore.assignedTo ? userOf(chore.assignedTo) : undefined
+  const pending = !chore.assignedTo && chore.pendingAssignee ? chore.pendingAssignee : null
+  const assignee = chore.assignedTo ? userOf(chore.assignedTo) : pending ? userOf(pending) : undefined
   const turns = upcomingTurns(chore, 4)
   const done = state.completions.filter((c) => c.choreId === chore.id)
 
@@ -753,11 +803,26 @@ export function ChoreDetailPage() {
         <div className="flex flex-wrap items-center gap-4">
           {assignee && <Avatar user={assignee} />}
           <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <span className="text-caption text-ink-muted">{chore.done ? 'Was assigned to' : 'Whose turn'}</span>
+            <span className="text-caption text-ink-muted">{chore.done ? 'Was assigned to' : pending ? 'Asked' : 'Whose turn'}</span>
             <span className="text-body">{assignee ? nameOf(assignee.id) : 'No one yet'}</span>
           </div>
-          <DueTag dueDate={chore.dueDate} done={chore.done} assignedTo={chore.assignedTo} />
+          {pending ? <WaitingTag chore={chore} /> : <DueTag dueDate={chore.dueDate} done={chore.done} assignedTo={chore.assignedTo} />}
         </div>
+        {pending === me!.id && (
+          <div className="flex flex-col gap-4 rounded-md border border-sky bg-paper p-4">
+            <p className="text-body">{nameOf(chore.requestedBy)} asked you to take this. It’s yours once you accept.</p>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="confirm" onClick={() => {
+                respondToRequest(chore.id, true)
+                navigate('.', { replace: true, state: toast(`“${chore.title}” is on your list.`) })
+              }}>Accept</Button>
+              <Button variant="secondary" onClick={() => {
+                respondToRequest(chore.id, false)
+                navigate('.', { replace: true, state: toast(`Declined. We let ${nameOf(chore.requestedBy)} know.`) })
+              }}>Decline</Button>
+            </div>
+          </div>
+        )}
         <dl className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-1">
             <dt className="text-caption text-ink-muted">Due</dt>
@@ -799,7 +864,7 @@ export function ChoreDetailPage() {
             </Button>
           )}
           <ButtonLink to={`/chores/${chore.id}/assign`} variant="secondary">
-            {chore.assignedTo ? 'Reassign' : 'Assign'}
+            {chore.assignedTo || pending ? 'Reassign' : 'Assign'}
           </ButtonLink>
           <Button
             variant="danger"

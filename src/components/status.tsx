@@ -1,5 +1,5 @@
 import { useApp } from '../data/store'
-import type { Iou, UserId } from '../data/types'
+import type { Chore, Iou, UserId } from '../data/types'
 import { isLateFor } from '../lib/chores'
 import { daysUntil, formatDate } from '../lib/format'
 import { Tag } from './Tag'
@@ -20,6 +20,14 @@ export function DueTag({ dueDate, done, assignedTo = null }: { dueDate: string; 
   if (days === 0) return <Tag>Due today</Tag>
   if (days === 1) return <Tag>Due tomorrow</Tag>
   return <Tag>Due {formatDate(dueDate)}</Tag>
+}
+
+/** A chore someone's been asked to take and hasn't accepted yet. */
+export function WaitingTag({ chore }: { chore: Chore }) {
+  const { me, nameOf } = useApp()
+  if (!chore.pendingAssignee) return null
+  if (chore.pendingAssignee === me!.id) return <Tag tone="action">Asked you</Tag>
+  return <Tag tone="brand">Waiting on {nameOf(chore.pendingAssignee)}</Tag>
 }
 
 export function IouStatusTag({ iou }: { iou: Iou }) {

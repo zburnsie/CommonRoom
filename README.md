@@ -90,6 +90,10 @@ Sign-in is simulated: passwords aren't checked or saved, and "Continue with your
 
 **How rotation works:** a repeating chore has a rotation (who takes turns, in room order). Marking it complete moves the due date forward and hands it to the next person, who gets notified. One-off chores just stay done.
 
+**How assigning works:** assigning a chore to yourself is immediate. Assigning it to someone else sends them a request (Accept / Decline in Updates on their room home, or on the chore). Until they accept it shows as "Waiting on <Name>" and doesn't count as theirs or as late; declining makes it unassigned again and tells whoever asked. For repeating chores, "Rotate between roommates" is the default with everyone in the area preselected; only the first person accepts, and later turns pass along on their own. Use "Acting as" in the prototype bar (on the homepage) to answer a request as the other roommate.
+
+**Late chores and reminders:** a missed chore shows as late only to its assignee for 2 days (`LATE_GRACE_DAYS` in `src/lib/chores.ts`); roommates see it as "due" until then. Common Room adds a reminder to your Updates when one of your chores is due today or tomorrow, or late (one per chore per day). Roommates can also send an anonymous reminder, once a day per chore.
+
 **How IOUs work:** whoever logs an IOU sends it to the other roommate to confirm; it only counts toward balances once confirmed. Instead of confirming, they can decline it or suggest a different amount (or a different favor), which goes back to the first roommate to confirm. This can go back and forth until one of them confirms or declines. To settle up, each of you marks it paid; it clears once both have.
 
 ## Project layout

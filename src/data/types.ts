@@ -59,7 +59,16 @@ export type Chore = {
   repeat: Repeat
   /** Who takes turns, in order. Empty until someone is assigned. */
   rotation: UserId[]
+  /** Whose turn it is. Null while unassigned or while a request is waiting to be accepted. */
   assignedTo: UserId | null
+  /**
+   * A roommate who's been asked to take the chore and hasn't accepted yet. It isn't theirs
+   * (or late) until they do. Assigning a chore to yourself, and later turns in a rotation,
+   * skip this. Missing in older saves; read as null.
+   */
+  pendingAssignee: UserId | null
+  /** Who asked `pendingAssignee` to take it. */
+  requestedBy: UserId | null
   /** Only one-off chores stay done; repeating chores roll forward instead. */
   done: boolean
 }
@@ -110,6 +119,9 @@ export type ActivityKind =
   | 'joined'
   | 'list-created'
   | 'chore-assigned'
+  | 'chore-requested'
+  | 'chore-accepted'
+  | 'chore-declined'
   | 'chore-done'
   | 'chore-nudged'
   | 'chore-reminder'

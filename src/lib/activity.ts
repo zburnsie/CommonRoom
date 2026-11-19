@@ -21,6 +21,12 @@ export function describeActivity(a: Activity, nameOf: NameOf, viewerId?: UserId)
       return `${actor} started the ${a.label} chore list`
     case 'chore-assigned':
       return `${actor} assigned “${a.label}” to ${subject}`
+    case 'chore-requested':
+      return a.subject === viewerId ? `${actor} asked you to take “${a.label}”` : `${actor} asked ${subject} to take “${a.label}”`
+    case 'chore-accepted':
+      return `${actor} accepted “${a.label}”`
+    case 'chore-declined':
+      return `${actor} passed on “${a.label}”. It’s unassigned again`
     case 'chore-done':
       return a.subject
         ? `${actor} finished “${a.label}”. Next up: ${subject}`

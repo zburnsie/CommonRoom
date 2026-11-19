@@ -1,5 +1,5 @@
 import { addDays, todayIso } from '../lib/format'
-import type { Activity, AppState, ChoreCompletion } from './types'
+import type { Activity, AppState, Chore, ChoreCompletion } from './types'
 
 export const emptyState: AppState = {
   users: [],
@@ -27,6 +27,11 @@ export function demoState(): AppState {
   }
   const room = demoRoomId
   const everyone = ['alex', 'maya', 'sam', 'jordan']
+  const chore = (c: Omit<Chore, 'pendingAssignee' | 'requestedBy'> & Partial<Pick<Chore, 'pendingAssignee' | 'requestedBy'>>): Chore => ({
+    pendingAssignee: null,
+    requestedBy: null,
+    ...c,
+  })
   const done = (c: Omit<ChoreCompletion, 'roomId'>): ChoreCompletion => ({ roomId: room, ...c })
   const feed = (a: Omit<Activity, 'roomId' | 'readBy'> & { readBy?: string[] }): Activity => ({
     roomId: room,
@@ -51,19 +56,22 @@ export function demoState(): AppState {
       { id: 'common', roomId: room, name: 'Common area', memberIds: [] },
     ],
     chores: [
-      { id: 'trash', listId: 'kitchen', title: 'Take out trash and recycling', notes: 'Bins go to the chute at the end of the hall.', dueDate: d(0), repeat: 'weekly', rotation: everyone, assignedTo: 'alex', done: false },
-      { id: 'dishes', listId: 'kitchen', title: 'Run and empty the dishwasher', notes: '', dueDate: d(1), repeat: 'daily', rotation: ['maya', 'sam'], assignedTo: 'maya', done: false },
-      { id: 'fridge', listId: 'kitchen', title: 'Clear out the fridge', notes: 'Anything unlabeled and older than a week goes.', dueDate: d(5), repeat: 'none', rotation: [], assignedTo: null, done: false },
+      chore({ id: 'trash', listId: 'kitchen', title: 'Take out trash and recycling', notes: 'Bins go to the chute at the end of the hall.', dueDate: d(0), repeat: 'weekly', rotation: everyone, assignedTo: 'alex', done: false }),
+      chore({ id: 'dishes', listId: 'kitchen', title: 'Run and empty the dishwasher', notes: '', dueDate: d(1), repeat: 'daily', rotation: ['maya', 'sam'], assignedTo: 'maya', done: false }),
+      // Maya asked Alex to take this; it's waiting for Alex to accept or decline.
+      chore({ id: 'fridge', listId: 'kitchen', title: 'Clear out the fridge', notes: 'Anything unlabeled and older than a week goes.', dueDate: d(5), repeat: 'none', rotation: ['alex'], assignedTo: null, pendingAssignee: 'alex', requestedBy: 'maya', done: false }),
+      // Alex asked Sam; act as Sam to accept it.
+      chore({ id: 'windows', listId: 'common', title: 'Wipe the windows', notes: '', dueDate: d(6), repeat: 'monthly', rotation: ['sam', 'jordan', 'alex', 'maya'], assignedTo: null, pendingAssignee: 'sam', requestedBy: 'alex', done: false }),
       // Missed yesterday: Jordan sees it as late, everyone else just sees it as due (grace period).
-      { id: 'counters', listId: 'kitchen', title: 'Wipe down counters and stove', notes: '', dueDate: d(-1), repeat: 'weekly', rotation: everyone, assignedTo: 'jordan', done: false },
+      chore({ id: 'counters', listId: 'kitchen', title: 'Wipe down counters and stove', notes: '', dueDate: d(-1), repeat: 'weekly', rotation: everyone, assignedTo: 'jordan', done: false }),
       // Past the grace period, so the whole room sees it as late.
-      { id: 'sweep', listId: 'common', title: 'Sweep the entryway', notes: '', dueDate: d(-4), repeat: 'weekly', rotation: ['maya', 'sam', 'jordan', 'alex'], assignedTo: 'maya', done: false },
+      chore({ id: 'sweep', listId: 'common', title: 'Sweep the entryway', notes: '', dueDate: d(-4), repeat: 'weekly', rotation: ['maya', 'sam', 'jordan', 'alex'], assignedTo: 'maya', done: false }),
       // Alex's own missed chore: late to Alex, private for one more day.
-      { id: 'plants', listId: 'common', title: 'Water the plants', notes: 'The two by the window, about a cup each.', dueDate: d(-1), repeat: 'weekly', rotation: ['alex', 'maya'], assignedTo: 'alex', done: false },
-      { id: 'bath', listId: 'bathroom', title: 'Clean the bathroom', notes: 'Sink, mirror, toilet and shower.', dueDate: d(2), repeat: 'weekly', rotation: ['alex', 'jordan'], assignedTo: 'jordan', done: false },
-      { id: 'back-clean', listId: 'back-bath', title: 'Clean the bathroom', notes: 'Sink, mirror, toilet and shower.', dueDate: d(3), repeat: 'weekly', rotation: ['maya', 'sam'], assignedTo: 'maya', done: false },
-      { id: 'tp', listId: 'back-bath', title: 'Restock toilet paper', notes: '', dueDate: d(-1), repeat: 'none', rotation: ['sam'], assignedTo: 'sam', done: true },
-      { id: 'vacuum', listId: 'common', title: 'Vacuum the common room', notes: '', dueDate: d(4), repeat: 'biweekly', rotation: ['sam', 'jordan', 'alex', 'maya'], assignedTo: 'sam', done: false },
+      chore({ id: 'plants', listId: 'common', title: 'Water the plants', notes: 'The two by the window, about a cup each.', dueDate: d(-1), repeat: 'weekly', rotation: ['alex', 'maya'], assignedTo: 'alex', done: false }),
+      chore({ id: 'bath', listId: 'bathroom', title: 'Clean the bathroom', notes: 'Sink, mirror, toilet and shower.', dueDate: d(2), repeat: 'weekly', rotation: ['alex', 'jordan'], assignedTo: 'jordan', done: false }),
+      chore({ id: 'back-clean', listId: 'back-bath', title: 'Clean the bathroom', notes: 'Sink, mirror, toilet and shower.', dueDate: d(3), repeat: 'weekly', rotation: ['maya', 'sam'], assignedTo: 'maya', done: false }),
+      chore({ id: 'tp', listId: 'back-bath', title: 'Restock toilet paper', notes: '', dueDate: d(-1), repeat: 'none', rotation: ['sam'], assignedTo: 'sam', done: true }),
+      chore({ id: 'vacuum', listId: 'common', title: 'Vacuum the common room', notes: '', dueDate: d(4), repeat: 'biweekly', rotation: ['sam', 'jordan', 'alex', 'maya'], assignedTo: 'sam', done: false }),
     ],
     completions: [
       done({ id: 'c1', choreId: 'tp', listId: 'back-bath', title: 'Restock toilet paper', doneBy: 'sam', turnOf: 'sam', dueDate: d(-1), at: at(1, 18) }),
@@ -87,6 +95,8 @@ export function demoState(): AppState {
       feed({ id: 'a1', at: at(1, 21), kind: 'iou-logged', actor: 'sam', subject: 'alex', label: '$8.00 · Uber back from the game', iouId: 'uber', notify: ['alex'], readBy: ['sam'] }),
       feed({ id: 'a2', at: at(1, 18), kind: 'chore-done', actor: 'sam', label: 'Restock toilet paper', choreId: 'tp', notify: [] }),
       feed({ id: 'a2b', at: at(2, 11), kind: 'chore-done', actor: 'sam', subject: 'maya', label: 'Clean the bathroom', choreId: 'back-clean', notify: [] }),
+      feed({ id: 'a2c', at: at(0, 8), kind: 'chore-requested', actor: 'maya', subject: 'alex', label: 'Clear out the fridge', choreId: 'fridge', notify: ['alex'], readBy: ['maya'] }),
+      feed({ id: 'a2d', at: at(1, 12), kind: 'chore-requested', actor: 'alex', subject: 'sam', label: 'Wipe the windows', choreId: 'windows', notify: ['sam'], readBy: ['alex'] }),
       feed({ id: 'a3', at: at(2, 9), kind: 'chore-assigned', actor: 'maya', subject: 'alex', label: 'Take out trash and recycling', choreId: 'trash', notify: ['alex'], readBy: ['maya'] }),
       feed({ id: 'a4', at: at(3, 20), kind: 'iou-confirmed', actor: 'maya', subject: 'alex', label: '$20.00 · Pizza on Friday', iouId: 'pizza', notify: ['alex'] }),
       feed({ id: 'a5', at: at(4, 12), kind: 'iou-settled', actor: 'maya', subject: 'jordan', label: '$15.00 · Movie ticket', iouId: 'tickets', notify: ['jordan'] }),

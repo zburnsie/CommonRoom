@@ -158,7 +158,7 @@ function MoneyWidget({ size }: { size: Size }) {
 function ActivityWidget({ size }: { size: Size }) {
   const { room, state } = useApp()
   const feed = state.activity
-    .filter((a) => a.roomId === room!.id && (a.kind === 'chore-done' || a.kind === 'chore-assigned' || a.kind === 'list-created'))
+    .filter((a) => a.roomId === room!.id && (a.kind === 'chore-done' || a.kind === 'chore-assigned' || a.kind === 'chore-accepted' || a.kind === 'list-created'))
     .slice(0, size === 'large' ? 10 : 3)
   return (
     <Section title="Room Activity">
