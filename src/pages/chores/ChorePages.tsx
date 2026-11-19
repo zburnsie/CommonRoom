@@ -746,7 +746,7 @@ export function ChoreDetailPage() {
         action={
           <NudgeButton
             chore={chore}
-            onNudged={() => navigate('.', { replace: true, state: toast(`Sent ${nameOf(chore.assignedTo)} a gentle nudge.`) })}
+            onNudged={() => navigate('.', { replace: true, state: toast(`Reminder sent to ${nameOf(chore.assignedTo)}. They won’t see it came from you.`) })}
           />
         }
       />

@@ -112,6 +112,7 @@ export type ActivityKind =
   | 'chore-assigned'
   | 'chore-done'
   | 'chore-nudged'
+  | 'chore-reminder'
   | 'iou-logged'
   | 'iou-confirmed'
   | 'iou-countered'
@@ -133,6 +134,8 @@ export type Activity = {
   choreId?: string
   iouId?: string
   listId?: string
+  /** For `chore-reminder`: why Common Room sent it. */
+  reminder?: 'due-today' | 'due-tomorrow' | 'late'
   notify: UserId[]
   readBy: UserId[]
 }

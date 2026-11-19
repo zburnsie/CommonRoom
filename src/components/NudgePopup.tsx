@@ -1,15 +1,15 @@
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../data/store'
 import { describeActivity } from '../lib/activity'
-import { Avatar } from './Avatar'
+import { ActivityMark } from './ActivityList'
 import { Button } from './Button'
 
 /**
- * Pops up when a roommate has nudged you about a chore. Dismissing it or
+ * Pops up when a roommate has sent you an anonymous reminder about a chore. Dismissing it or
  * opening the chore marks the nudge read; it stays in your inbox either way.
  */
 export function NudgePopup() {
-  const { state, me, room, userOf, nameOf, markActivityRead } = useApp()
+  const { state, me, room, nameOf, markActivityRead } = useApp()
   const navigate = useNavigate()
   // Newest first, so the first is the latest nudge you haven't seen.
   const unseen = state.activity.filter(
@@ -17,7 +17,6 @@ export function NudgePopup() {
   )
   const nudge = unseen[0]
   if (!nudge) return null
-  const actor = userOf(nudge.actor)
   const more = unseen.length - 1
 
   return (
@@ -39,10 +38,10 @@ export function NudgePopup() {
         style={{ animation: 'cr-nudge-in 0.5s ease-out' }}
       >
         <div className="flex items-start gap-4">
-          {actor && <Avatar user={actor} size="sm" />}
+          <ActivityMark activity={nudge} />
           <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <span className="text-caption text-ink-muted">Gentle nudge 👋</span>
-            <p className="text-body">{describeActivity(nudge, nameOf)}</p>
+            <span className="text-caption text-ink-muted">Reminder</span>
+            <p className="text-body">{describeActivity(nudge, nameOf, me!.id)}</p>
             {more > 0 && <span className="text-caption text-ink-muted">+ {more} more in your inbox</span>}
           </div>
         </div>
