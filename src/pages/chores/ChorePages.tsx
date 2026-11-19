@@ -15,7 +15,7 @@ import { DueTag } from '../../components/status'
 import { Tag } from '../../components/Tag'
 import { useApp } from '../../data/store'
 import type { Chore, ChoreList, Repeat, UserId } from '../../data/types'
-import { areaMembers, daysLate, repeatLabels, upcomingTurns } from '../../lib/chores'
+import { areaMembers, daysLateFor, isLateFor, privateDaysLeft, repeatLabels, upcomingTurns } from '../../lib/chores'
 import { addDays, dateOf, daysUntil, formatDate, joinNames, todayIso } from '../../lib/format'
 
 function useRoomLists() {
@@ -190,7 +190,7 @@ function useUpcomingTurns() {
 
 /** Areas in the room, and your next turns on repeating chores. */
 export function ChoresIndexPage() {
-  const { state } = useApp()
+  const { state, me } = useApp()
   const lists = useRoomLists()
   const upcoming = useUpcomingTurns()
 
@@ -208,7 +208,8 @@ export function ChoresIndexPage() {
           <ul className="grid gap-2 sm:grid-cols-2">
             {lists.map((list) => {
               const open = state.chores.filter((c) => c.listId === list.id && !c.done)
-              const overdue = open.filter((c) => c.assignedTo && daysUntil(c.dueDate) < 0).length
+              // Roommates' missed chores only count once the grace period is over.
+              const overdue = open.filter((c) => isLateFor(c, me!.id)).length
               const unassigned = open.filter((c) => !c.assignedTo).length
               return (
                 <li key={list.id}>
@@ -274,14 +275,15 @@ export function ChoresOverviewPage() {
   const since = days === null ? null : addDays(todayIso(), -days)
   const done = state.completions.filter((c) => c.roomId === room!.id && (!since || dateOf(c.at) > since))
 
-  const overdue = (c: Chore) => c.assignedTo !== null && daysUntil(c.dueDate) < 0
+  // Your own missed chores show as overdue right away; a roommate's only after the grace period.
+  const overdue = (c: Chore) => isLateFor(c, me!.id)
   const roommates = members.map((m) => {
     const theirs = open.filter((c) => c.assignedTo === m.id)
     const didIt = done.filter((c) => c.doneBy === m.id)
     return {
       user: m,
       done: didIt.length,
-      late: didIt.filter((c) => daysLate(c) > 0).length,
+      late: didIt.filter((c) => daysLateFor(c, me!.id) > 0).length,
       covered: didIt.filter((c) => c.turnOf && c.turnOf !== m.id).length,
       toDo: theirs.length,
       overdue: theirs.filter(overdue).length,
@@ -291,7 +293,8 @@ export function ChoresOverviewPage() {
   const toDo = who ? open.filter((c) => c.assignedTo === who) : open
   const groups = [
     { title: 'Overdue', chores: toDo.filter(overdue) },
-    { title: 'Due in the next week', chores: toDo.filter((c) => c.assignedTo && daysUntil(c.dueDate) >= 0 && daysUntil(c.dueDate) < 7) },
+    // Includes roommates' chores still in the grace period, which read as "due" rather than late.
+    { title: 'Due in the next week', chores: toDo.filter((c) => c.assignedTo && !overdue(c) && daysUntil(c.dueDate) < 7) },
     { title: 'Later', chores: toDo.filter((c) => c.assignedTo && daysUntil(c.dueDate) >= 7) },
     { title: 'Needs someone', chores: toDo.filter((c) => !c.assignedTo) },
   ].filter((g) => g.chores.length > 0)
@@ -756,7 +759,7 @@ export function ChoreDetailPage() {
             <span className="text-caption text-ink-muted">{chore.done ? 'Was assigned to' : 'Whose turn'}</span>
             <span className="text-body">{assignee ? nameOf(assignee.id) : 'No one yet'}</span>
           </div>
-          <DueTag dueDate={chore.dueDate} done={chore.done} />
+          <DueTag dueDate={chore.dueDate} done={chore.done} assignedTo={chore.assignedTo} />
         </div>
         <dl className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-1">
@@ -769,6 +772,11 @@ export function ChoreDetailPage() {
           </div>
         </dl>
         {chore.notes && <p className="text-body text-ink-muted">{chore.notes}</p>}
+        {chore.assignedTo === me!.id && privateDaysLeft(chore) > 0 && (
+          <p className="text-body text-ink-muted">
+            Only you can see that this is late. Roommates see it as due for {privateDaysLeft(chore) === 1 ? '1 more day' : `${privateDaysLeft(chore)} more days`}.
+          </p>
+        )}
         <div className="flex flex-wrap gap-2">
           {chore.done ? (
             <Button

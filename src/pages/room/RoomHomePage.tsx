@@ -17,13 +17,24 @@ import type { Chore, HomeLayout, HomeView, HomeWidget } from '../../data/types'
 import { moneyBalance } from '../../lib/balances'
 import { daysUntil, firstName, formatDate, formatMoney } from '../../lib/format'
 import { isFlagOnForProject, useFlag } from '../../lib/flags'
+import { privateDaysLeft } from '../../lib/chores'
 import { allWidgets, defaultHomeLayout, featureWidget, homeViews, homeWidgets, moveWidget, normalizeHomeLayout, toggleWidget } from '../../lib/home'
 
 type Size = 'large' | 'compact'
 
-function DueCaption({ dueDate }: { dueDate: string }) {
+/** Due date for one of your own chores. Late ones say how long they stay private to you. */
+function DueCaption({ chore }: { chore: Chore }) {
+  const { dueDate } = chore
   const days = daysUntil(dueDate)
-  if (days < 0) return <Tag tone="danger">Was due {formatDate(dueDate)}</Tag>
+  if (days < 0) {
+    const left = privateDaysLeft(chore)
+    return (
+      <span className="flex flex-col items-end gap-1">
+        <Tag tone="danger">Was due {formatDate(dueDate)}</Tag>
+        {left > 0 && <span className="text-caption text-ink-muted">Only you see this · {left === 1 ? '1 day' : `${left} days`} left</span>}
+      </span>
+    )
+  }
   if (days === 0) return <span className="text-caption text-ink-muted">due today</span>
   if (days === 1) return <span className="text-caption text-ink-muted">due tomorrow</span>
   return <span className="text-caption text-ink-muted">due {formatDate(dueDate)}</span>
@@ -62,7 +73,7 @@ function ChoresWidget({ size, chores, onComplete }: { size: Size; chores: Chore[
               <Link to={`/chores/${chore.id}`} className="text-body min-w-0 flex-1 hover:underline">
                 {chore.title}
               </Link>
-              <DueCaption dueDate={chore.dueDate} />
+              <DueCaption chore={chore} />
               <CompleteButton title={chore.title} onClick={() => onComplete(chore)} />
             </li>
           ))}

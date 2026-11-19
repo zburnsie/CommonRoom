@@ -25,7 +25,7 @@ export function ChoreRow({ chore, showList = false, action }: { chore: Chore; sh
           {showList && list && ` · ${list.name}`}
         </span>
       </div>
-      {chore.assignedTo ? <DueTag dueDate={chore.dueDate} done={chore.done} /> : <Tag tone="brand">Needs someone</Tag>}
+      {chore.assignedTo ? <DueTag dueDate={chore.dueDate} done={chore.done} assignedTo={chore.assignedTo} /> : <Tag tone="brand">Needs someone</Tag>}
     </>
   )
   if (!action) {

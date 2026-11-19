@@ -54,7 +54,12 @@ export function demoState(): AppState {
       { id: 'trash', listId: 'kitchen', title: 'Take out trash and recycling', notes: 'Bins go to the chute at the end of the hall.', dueDate: d(0), repeat: 'weekly', rotation: everyone, assignedTo: 'alex', done: false },
       { id: 'dishes', listId: 'kitchen', title: 'Run and empty the dishwasher', notes: '', dueDate: d(1), repeat: 'daily', rotation: ['maya', 'sam'], assignedTo: 'maya', done: false },
       { id: 'fridge', listId: 'kitchen', title: 'Clear out the fridge', notes: 'Anything unlabeled and older than a week goes.', dueDate: d(5), repeat: 'none', rotation: [], assignedTo: null, done: false },
-      { id: 'counters', listId: 'kitchen', title: 'Wipe down counters and stove', notes: '', dueDate: d(-2), repeat: 'weekly', rotation: everyone, assignedTo: 'jordan', done: false },
+      // Missed yesterday: Jordan sees it as late, everyone else just sees it as due (grace period).
+      { id: 'counters', listId: 'kitchen', title: 'Wipe down counters and stove', notes: '', dueDate: d(-1), repeat: 'weekly', rotation: everyone, assignedTo: 'jordan', done: false },
+      // Past the grace period, so the whole room sees it as late.
+      { id: 'sweep', listId: 'common', title: 'Sweep the entryway', notes: '', dueDate: d(-4), repeat: 'weekly', rotation: ['maya', 'sam', 'jordan', 'alex'], assignedTo: 'maya', done: false },
+      // Alex's own missed chore: late to Alex, private for one more day.
+      { id: 'plants', listId: 'common', title: 'Water the plants', notes: 'The two by the window, about a cup each.', dueDate: d(-1), repeat: 'weekly', rotation: ['alex', 'maya'], assignedTo: 'alex', done: false },
       { id: 'bath', listId: 'bathroom', title: 'Clean the bathroom', notes: 'Sink, mirror, toilet and shower.', dueDate: d(2), repeat: 'weekly', rotation: ['alex', 'jordan'], assignedTo: 'jordan', done: false },
       { id: 'back-clean', listId: 'back-bath', title: 'Clean the bathroom', notes: 'Sink, mirror, toilet and shower.', dueDate: d(3), repeat: 'weekly', rotation: ['maya', 'sam'], assignedTo: 'maya', done: false },
       { id: 'tp', listId: 'back-bath', title: 'Restock toilet paper', notes: '', dueDate: d(-1), repeat: 'none', rotation: ['sam'], assignedTo: 'sam', done: true },
@@ -66,7 +71,7 @@ export function demoState(): AppState {
       done({ id: 'c3', choreId: 'trash', listId: 'kitchen', title: 'Take out trash and recycling', doneBy: 'jordan', turnOf: 'jordan', dueDate: d(-7), at: at(6, 19) }),
       done({ id: 'c4', choreId: 'bath', listId: 'bathroom', title: 'Clean the bathroom', doneBy: 'alex', turnOf: 'alex', dueDate: d(-5), at: at(5, 14) }),
       done({ id: 'c5', choreId: 'back-clean', listId: 'back-bath', title: 'Clean the bathroom', doneBy: 'sam', turnOf: 'sam', dueDate: d(-4), at: at(2, 11) }),
-      done({ id: 'c6', choreId: 'vacuum', listId: 'common', title: 'Vacuum the common room', doneBy: 'maya', turnOf: 'maya', dueDate: d(-10), at: at(10, 16) }),
+      done({ id: 'c6', choreId: 'vacuum', listId: 'common', title: 'Vacuum the common room', doneBy: 'maya', turnOf: 'maya', dueDate: d(-10), at: at(6, 16) }),
       done({ id: 'c7', choreId: 'counters', listId: 'kitchen', title: 'Wipe down counters and stove', doneBy: 'alex', turnOf: 'sam', dueDate: d(-9), at: at(9, 20) }),
       done({ id: 'c8', choreId: 'trash', listId: 'kitchen', title: 'Take out trash and recycling', doneBy: 'sam', turnOf: 'sam', dueDate: d(-14), at: at(14, 18) }),
       done({ id: 'c9', choreId: 'bath', listId: 'bathroom', title: 'Clean the bathroom', doneBy: 'jordan', turnOf: 'jordan', dueDate: d(-12), at: at(11, 12) }),
