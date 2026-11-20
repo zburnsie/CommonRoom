@@ -6,6 +6,7 @@ import { ErrorText, Field, TextInput } from '../../components/fields'
 import { SetupSteps } from '../../components/SetupSteps'
 import { SkipToDemo } from '../../components/SkipToDemo'
 import { useApp } from '../../data/store'
+import { useFlag } from '../../lib/flags'
 
 /** Simulated single sign-on: asks for a school email instead of redirecting to a real provider. */
 function SchoolLogin({ onSubmit }: { onSubmit: (email: string) => void }) {
@@ -103,6 +104,7 @@ export function SignUpPage() {
 export function LogInPage() {
   const { logIn, signUp, state } = useApp()
   const navigate = useNavigate()
+  const moneyOn = useFlag('money')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -117,7 +119,7 @@ export function LogInPage() {
     <div className="mx-auto flex w-full max-w-md flex-col gap-8">
       <header className="flex flex-col gap-2">
         <h1 className="text-title">Welcome back</h1>
-        <p className="text-body text-ink-muted">Log in to see your room’s chores and IOUs.</p>
+        <p className="text-body text-ink-muted">Log in to see your room’s chores{moneyOn && ' and IOUs'}.</p>
       </header>
       <Card className="flex flex-col gap-4">
         <SchoolLogin

@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { SYSTEM_ACTOR } from '../lib/activity'
 import { nextDueDate, nextInRotation } from '../lib/chores'
 import { iouValue } from '../lib/balances'
-import { dateOf, firstName, todayIso } from '../lib/format'
+import { dateOf, daysUntil, firstName, todayIso } from '../lib/format'
 import { demoRoomId, demoState, emptyState } from './seed'
 import type { Activity, AppState, Chore, ChoreList, HomeLayout, HomeView, Iou, Repeat, Room, User, UserId } from './types'
 
@@ -26,6 +27,8 @@ function load(): AppState {
       )
       // Older saves don't have area members; those areas are shared by everyone.
       state.choreLists = state.choreLists.map((l) => (l.memberIds ? l : { ...l, memberIds: [] }))
+      // Older saves don't have assignment requests; nothing is waiting to be accepted.
+      state.chores = state.chores.map((c) => ({ ...c, pendingAssignee: c.pendingAssignee ?? null, requestedBy: c.requestedBy ?? null }))
       return state
     }
   } catch {
@@ -70,12 +73,20 @@ type AppContextValue = {
   /** Deletes an area and its chores. Completed work stays in the house history. */
   deleteChoreList: (listId: string) => void
   addChore: (chore: { listId: string; title: string; notes: string; dueDate: string; repeat: Repeat }) => string
+  /**
+   * Gives a chore to someone. Yourself: it's yours right away. Anyone else: they get a request
+   * and it's theirs once they accept. Later turns in the rotation are handed on without asking.
+   */
   assignChore: (choreId: string, assignedTo: UserId, rotation: UserId[]) => void
+  /** Accepts or declines a chore someone asked you to take. Declining leaves it unassigned and tells them. */
+  respondToRequest: (choreId: string, accept: boolean) => void
   completeChore: (choreId: string) => void
-  /** Sends whoever's turn it is a friendly reminder. Once a day per chore, so it stays gentle. */
+  /** Sends whoever's turn it is an anonymous reminder. Once a day per chore, so it stays gentle. */
   nudgeChore: (choreId: string) => void
-  /** Whether you've already nudged this chore's assignee today. */
+  /** Whether you've already sent this chore's assignee a reminder today. */
   nudgedToday: (choreId: string) => boolean
+  /** When you sent this chore's assignee a reminder today, or null. */
+  nudgeSentAt: (choreId: string) => string | null
   reopenChore: (choreId: string) => void
   deleteChore: (choreId: string) => void
 
@@ -108,6 +119,12 @@ const AppContext = createContext<AppContextValue | null>(null)
  */
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AppState>(load)
+
+  // No backend to send reminders, so Common Room writes them when the app opens, you switch accounts or join a room.
+  const sessionRoomId = state.users.find((u) => u.id === state.sessionUserId)?.roomId
+  useEffect(() => {
+    setState(withChoreReminders)
+  }, [state.sessionUserId, sessionRoomId])
 
   useEffect(() => {
     try {
@@ -274,22 +291,65 @@ export function AppProvider({ children }: { children: ReactNode }) {
       })),
     addChore: (chore) => {
       const id = newId()
-      setState((s) => ({ ...s, chores: [...s.chores, { ...chore, id, rotation: [], assignedTo: null, done: false }] }))
+      setState((s) => ({
+        ...s,
+        chores: [...s.chores, { ...chore, id, rotation: [], assignedTo: null, pendingAssignee: null, requestedBy: null, done: false }],
+      }))
       return id
     },
     assignChore: (choreId, assignedTo, rotation) => {
       const chore = state.chores.find((c) => c.id === choreId)
       if (!chore) return
+      // Already theirs (they accepted before, or it's their turn in the rotation): just save the changes.
+      if (assignedTo === chore.assignedTo && assignedTo !== meId) {
+        setState((s) => updateChore(s, choreId, { rotation }))
+        return
+      }
+      if (assignedTo === meId) {
+        setState((s) =>
+          withActivity(updateChore(s, choreId, { assignedTo, rotation, pendingAssignee: null, requestedBy: null }), {
+            kind: 'chore-assigned', actor: meId, subject: assignedTo, label: chore.title, choreId,
+          }),
+        )
+        return
+      }
       setState((s) =>
-        withActivity(updateChore(s, choreId, { assignedTo, rotation }), {
-          kind: 'chore-assigned',
+        withActivity(updateChore(s, choreId, { assignedTo: null, rotation, pendingAssignee: assignedTo, requestedBy: meId }), {
+          kind: 'chore-requested',
           actor: meId,
           subject: assignedTo,
           label: chore.title,
           choreId,
-          notify: assignedTo === meId ? [] : [assignedTo],
+          notify: [assignedTo],
         }),
       )
+    },
+    respondToRequest: (choreId, accept) => {
+      const chore = state.chores.find((c) => c.id === choreId)
+      if (!chore || chore.pendingAssignee !== meId) return
+      const requester = chore.requestedBy
+      const patch: Partial<Chore> = accept
+        ? { assignedTo: meId, pendingAssignee: null, requestedBy: null }
+        : { assignedTo: null, rotation: [], pendingAssignee: null, requestedBy: null }
+      setState((s) => {
+        // The request itself has been dealt with, so it no longer shows as unread.
+        const handled: AppState = {
+          ...s,
+          activity: s.activity.map((a) =>
+            a.kind === 'chore-requested' && a.choreId === choreId && a.notify.includes(meId) && !a.readBy.includes(meId)
+              ? { ...a, readBy: [...a.readBy, meId] }
+              : a,
+          ),
+        }
+        return withActivity(updateChore(handled, choreId, patch), {
+          kind: accept ? 'chore-accepted' : 'chore-declined',
+          actor: meId,
+          subject: requester ?? undefined,
+          label: chore.title,
+          choreId,
+          notify: requester && requester !== meId ? [requester] : [],
+        })
+      })
     },
     completeChore: (choreId) => {
       const chore = state.chores.find((c) => c.id === choreId)
@@ -344,9 +404,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }),
       )
     },
-    nudgedToday: (choreId) => {
+    nudgedToday: (choreId) => value.nudgeSentAt(choreId) !== null,
+    nudgeSentAt: (choreId) => {
       const chore = state.chores.find((c) => c.id === choreId)
-      return state.activity.some(
+      const sent = state.activity.find(
         (a) =>
           a.kind === 'chore-nudged' &&
           a.choreId === choreId &&
@@ -354,6 +415,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           a.subject === chore?.assignedTo &&
           dateOf(a.at) === todayIso(),
       )
+      return sent?.at ?? null
     },
     reopenChore: (choreId) =>
       setState((s) => {
@@ -489,6 +551,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>
+}
+
+/**
+ * Adds a reminder from Common Room for each of the signed-in person's chores that's due
+ * today or tomorrow, or late. At most one per chore per day.
+ */
+function withChoreReminders(s: AppState): AppState {
+  const me = s.users.find((u) => u.id === s.sessionUserId)
+  const room = s.rooms.find((r) => r.id === me?.roomId)
+  if (!me || !room) return s
+  const today = todayIso()
+  const listIds = new Set(s.choreLists.filter((l) => l.roomId === room.id).map((l) => l.id))
+  const remindedToday = new Set(
+    s.activity
+      .filter((a) => a.kind === 'chore-reminder' && a.notify.includes(me.id) && dateOf(a.at) === today)
+      .map((a) => a.choreId),
+  )
+  const now = new Date().toISOString()
+  const reminders: Activity[] = s.chores
+    .filter((c) => listIds.has(c.listId) && c.assignedTo === me.id && !c.done && daysUntil(c.dueDate) <= 1 && !remindedToday.has(c.id))
+    .map((c) => {
+      const days = daysUntil(c.dueDate)
+      return {
+        id: newId(),
+        roomId: room.id,
+        at: now,
+        kind: 'chore-reminder',
+        actor: SYSTEM_ACTOR,
+        label: c.title,
+        choreId: c.id,
+        reminder: days < 0 ? 'late' : days === 0 ? 'due-today' : 'due-tomorrow',
+        notify: [me.id],
+        readBy: [],
+      }
+    })
+  return reminders.length === 0 ? s : { ...s, activity: [...reminders, ...s.activity] }
 }
 
 export function useApp() {

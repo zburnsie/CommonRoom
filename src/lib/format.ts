@@ -23,6 +23,11 @@ export function formatTimestamp(iso: string): string {
   return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
+/** "3:42 PM" */
+export function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+}
+
 export function todayIso(): string {
   return toIso(new Date())
 }

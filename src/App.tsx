@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { RequireAuth, RequireRoom } from './components/guards'
+import { RequireAuth, RequireFlag, RequireRoom } from './components/guards'
 import { AppLayout, OnboardingLayout, PublicLayout } from './components/Layout'
 import {
   AddChorePage,
@@ -12,7 +12,7 @@ import {
   CreateChoreListPage,
   EditChoreListPage,
 } from './pages/chores/ChorePages'
-import { InboxPage, IouDetailPage, LogIouPage, MoneyPage, SettleUpPage } from './pages/money/MoneyPages'
+import { IouDetailPage, LogIouPage, MoneyPage, SettleUpPage } from './pages/money/MoneyPages'
 import {
   CreateProfilePage,
   CreateRoomPage,
@@ -63,11 +63,15 @@ export default function App() {
           <Route path="chores/:choreId" element={<ChoreDetailPage />} />
           <Route path="chores/:choreId/assign" element={<AssignChorePage />} />
           <Route path="chores/:choreId/done" element={<ChoreDonePage />} />
-          <Route path="money" element={<MoneyPage />} />
-          <Route path="money/new" element={<LogIouPage />} />
-          <Route path="money/ious/:iouId" element={<IouDetailPage />} />
-          <Route path="money/settle/:userId" element={<SettleUpPage />} />
-          <Route path="inbox" element={<InboxPage />} />
+          {/* Money is behind the `money` flag; with it off, every /money page goes to the room home. */}
+          <Route element={<RequireFlag flag="money" to="/room" />}>
+            <Route path="money" element={<MoneyPage />} />
+            <Route path="money/new" element={<LogIouPage />} />
+            <Route path="money/ious/:iouId" element={<IouDetailPage />} />
+            <Route path="money/settle/:userId" element={<SettleUpPage />} />
+          </Route>
+          {/* The inbox is now the Updates section on the room home. */}
+          <Route path="inbox" element={<Navigate to="/room" replace />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Route>

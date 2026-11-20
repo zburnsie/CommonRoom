@@ -1,20 +1,21 @@
 import { Link } from 'react-router-dom'
 import { useApp } from '../data/store'
 import type { ChoreCompletion } from '../data/types'
-import { daysLate } from '../lib/chores'
+import { daysLateFor } from '../lib/chores'
 import { dateOf, formatDate } from '../lib/format'
 import { Avatar } from './Avatar'
 import { Tag } from './Tag'
 
 /** Chores that were marked complete, newest first: who did them, when, and whether they were on time. */
 export function CompletionList({ items, showArea = true }: { items: ChoreCompletion[]; showArea?: boolean }) {
-  const { state, userOf, nameOf } = useApp()
+  const { state, me, userOf, nameOf } = useApp()
   return (
     <ul className="flex flex-col divide-y divide-rule rounded-md border border-rule bg-surface">
       {[...items].sort((a, b) => b.at.localeCompare(a.at)).map((c) => {
         const doer = userOf(c.doneBy)
         const area = state.choreLists.find((l) => l.id === c.listId)
-        const late = daysLate(c)
+        // Finishing within the grace period only shows as late to whoever did it.
+        const late = daysLateFor(c, me!.id)
         const covered = c.turnOf && c.turnOf !== c.doneBy
         const body = (
           <div className="flex flex-wrap items-center gap-4 p-4">

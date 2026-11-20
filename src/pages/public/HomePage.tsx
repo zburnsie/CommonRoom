@@ -3,6 +3,7 @@ import { Button, ButtonLink } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { useHomePath } from '../../components/guards'
 import { useApp } from '../../data/store'
+import { useFlag } from '../../lib/flags'
 
 const steps = [
   {
@@ -14,6 +15,7 @@ const steps = [
     body: 'Make a list, add chores with due dates, and assign them. Repeating chores rotate to the next roommate when one is done.',
   },
   {
+    money: true,
     title: 'Keep IOUs fair',
     body: 'Log what you owe each other — $20 cash or “a dinner”. Your roommate confirms it, and you both mark it paid when you settle up.',
   },
@@ -23,14 +25,15 @@ export function HomePage() {
   const { me, loadDemo } = useApp()
   const home = useHomePath()
   const navigate = useNavigate()
+  const moneyOn = useFlag('money')
 
   return (
     <>
       <section className="flex flex-col gap-4 py-8">
         <p className="text-caption text-ink-muted">For dorms and shared apartments</p>
-        <h1 className="text-title sm:text-display">Chores and IOUs, sorted between roommates.</h1>
+        <h1 className="text-title sm:text-display">{moneyOn ? 'Chores and IOUs' : 'Chores'}, sorted between roommates.</h1>
         <p className="text-body max-w-xl text-ink-muted">
-          Common Room keeps track of whose turn it is and who owes what, so nobody has to keep score out loud.
+          Common Room keeps track of whose turn it is{moneyOn && ' and who owes what'}, so nobody has to keep score out loud.
         </p>
         <div className="flex flex-wrap gap-2">
           {me ? (
@@ -56,7 +59,7 @@ export function HomePage() {
       <section className="flex flex-col gap-4">
         <h2 className="text-heading">How it works</h2>
         <ol className="grid gap-4 md:grid-cols-3">
-          {steps.map((step, i) => (
+          {steps.filter((step) => moneyOn || !('money' in step)).map((step, i) => (
             <li key={step.title}>
               <Card className="flex h-full flex-col gap-2">
                 <span className="text-caption text-ink-muted">Step {i + 1}</span>

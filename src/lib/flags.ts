@@ -11,6 +11,11 @@ export const flags = {
     label: 'Personal / shared home',
     description: 'A toggle on the room home between your chores and IOUs, and the room’s activity and upcoming chores.',
   },
+  money: {
+    env: import.meta.env.VITE_FLAG_MONEY,
+    label: 'Money / IOUs',
+    description: 'The Money page, IOUs and balances. Off by default; when off, money is hidden everywhere and /money links go to the room home.',
+  },
 }
 
 export type Flag = keyof typeof flags

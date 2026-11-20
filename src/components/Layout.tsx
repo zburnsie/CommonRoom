@@ -1,6 +1,8 @@
 import { useEffect, type ReactNode } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useApp } from '../data/store'
+import { useFlag } from '../lib/flags'
+import { useUnreadUpdates } from '../lib/updates'
 import { Avatar } from './Avatar'
 import { buttonClass } from './Button'
 import { NudgePopup } from './NudgePopup'
@@ -43,7 +45,8 @@ export function PublicLayout() {
       header={
         <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-4 px-4 py-4 md:px-8">
           <Wordmark to="/" />
-          <nav className="flex gap-2" aria-label="Account">
+          {/* The homepage has its own sign-up, log-in and open-your-room buttons. */}
+          {pathname !== '/' && <nav className="flex gap-2" aria-label="Account">
             {me ? (
               <Link to={home} className={buttonClass('primary')}>Open your room</Link>
             ) : (
@@ -52,7 +55,7 @@ export function PublicLayout() {
                 {pathname !== '/signup' && <Link to="/signup" className={buttonClass('primary')}>Sign up</Link>}
               </>
             )}
-          </nav>
+          </nav>}
         </div>
       }
     >
@@ -86,13 +89,14 @@ export function OnboardingLayout() {
 }
 
 export function AppLayout() {
-  const { me, room, state } = useApp()
-  const unread = state.activity.filter((a) => a.notify.includes(me!.id) && !a.readBy.includes(me!.id)).length
+  const { me, room } = useApp()
+  const moneyOn = useFlag('money')
+  // Unread updates live at the top of the room home, so Home carries the count.
+  const unread = useUnreadUpdates().length
   const links = [
-    { to: '/room', label: 'Home' },
+    { to: '/room', label: unread ? `Home (${unread})` : 'Home' },
     { to: '/chores', label: 'Chores' },
-    { to: '/money', label: 'Money' },
-    { to: '/inbox', label: unread ? `Inbox (${unread})` : 'Inbox' },
+    ...(moneyOn ? [{ to: '/money', label: 'Money' }] : []),
   ]
   return (
     <Shell

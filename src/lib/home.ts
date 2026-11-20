@@ -26,7 +26,10 @@ export function normalizeHomeLayout(
   widgets: HomeWidget[] = allWidgets,
   fallback: HomeLayout = defaultHomeLayout,
 ): HomeLayout {
-  if (!saved || !widgets.includes(saved.featured)) return fallback
+  if (!saved || !widgets.includes(saved.featured)) {
+    // The fallback may list widgets that aren't available (like money with its flag off).
+    saved = widgets.includes(fallback.featured) ? fallback : { featured: widgets[0], order: fallback.order, hidden: fallback.hidden }
+  }
   const order = saved.order.filter((w, i) => widgets.includes(w) && w !== saved.featured && saved.order.indexOf(w) === i)
   for (const w of widgets) if (w !== saved.featured && !order.includes(w)) order.push(w)
   return { featured: saved.featured, order, hidden: saved.hidden.filter((w) => order.includes(w)) }

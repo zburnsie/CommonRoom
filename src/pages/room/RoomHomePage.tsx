@@ -9,6 +9,7 @@ import { CompleteButton } from '../../components/CompleteButton'
 import { ConfettiToast } from '../../components/ConfettiToast'
 import { canNudge, NudgeButton } from '../../components/NudgeButton'
 import { ChoiceRow } from '../../components/fields'
+import { Updates } from '../../components/Updates'
 import { EmptyState, Flash } from '../../components/PageHeader'
 import { Tag } from '../../components/Tag'
 import { demoRoomId } from '../../data/seed'
@@ -17,13 +18,24 @@ import type { Chore, HomeLayout, HomeView, HomeWidget } from '../../data/types'
 import { moneyBalance } from '../../lib/balances'
 import { daysUntil, firstName, formatDate, formatMoney } from '../../lib/format'
 import { isFlagOnForProject, useFlag } from '../../lib/flags'
+import { privateDaysLeft } from '../../lib/chores'
 import { allWidgets, defaultHomeLayout, featureWidget, homeViews, homeWidgets, moveWidget, normalizeHomeLayout, toggleWidget } from '../../lib/home'
 
 type Size = 'large' | 'compact'
 
-function DueCaption({ dueDate }: { dueDate: string }) {
+/** Due date for one of your own chores. Late ones say how long they stay private to you. */
+function DueCaption({ chore }: { chore: Chore }) {
+  const { dueDate } = chore
   const days = daysUntil(dueDate)
-  if (days < 0) return <Tag tone="danger">Was due {formatDate(dueDate)}</Tag>
+  if (days < 0) {
+    const left = privateDaysLeft(chore)
+    return (
+      <span className="flex flex-col items-end gap-1">
+        <Tag tone="danger">Was due {formatDate(dueDate)}</Tag>
+        {left > 0 && <span className="text-caption text-ink-muted">Only you see this · {left === 1 ? '1 day' : `${left} days`} left</span>}
+      </span>
+    )
+  }
   if (days === 0) return <span className="text-caption text-ink-muted">due today</span>
   if (days === 1) return <span className="text-caption text-ink-muted">due tomorrow</span>
   return <span className="text-caption text-ink-muted">due {formatDate(dueDate)}</span>
@@ -62,17 +74,13 @@ function ChoresWidget({ size, chores, onComplete }: { size: Size; chores: Chore[
               <Link to={`/chores/${chore.id}`} className="text-body min-w-0 flex-1 hover:underline">
                 {chore.title}
               </Link>
-              <DueCaption dueDate={chore.dueDate} />
+              <DueCaption chore={chore} />
               <CompleteButton title={chore.title} onClick={() => onComplete(chore)} />
             </li>
           ))}
         </ul>
       )}
-      {more > 0 && (
-        <Link to="/chores" className="text-label text-ink-muted hover:text-ink">
-          + {more} more assigned to you
-        </Link>
-      )}
+      {more > 0 && <p className="text-label text-ink-muted">+ {more} more assigned to you</p>}
     </section>
   )
 }
@@ -98,14 +106,10 @@ function MoneyWidget({ size }: { size: Size }) {
     return (
       <section className="flex flex-col gap-2">
         <h2 className="text-caption text-ink-muted">Balance</h2>
-        <div className="grid grid-cols-2 gap-2">
-          <Link to="/money" className="rounded-md border border-rule bg-paper px-4 py-2 text-body text-ink-muted hover:border-ink">
-            {balanceLabel}
-          </Link>
-          <Link to="/money" className="rounded-md border border-rule bg-paper px-4 py-2 text-body text-ink-muted hover:border-ink">
-            Needs OK: <span className="text-amount">{needsOk}</span>
-          </Link>
-        </div>
+        <Link to="/money" className="flex flex-wrap justify-between gap-2 rounded-md border border-rule bg-surface px-4 py-2 text-body text-ink-muted hover:border-ink">
+          <span>{balanceLabel}</span>
+          <span>Needs OK: <span className="text-amount">{needsOk}</span></span>
+        </Link>
       </section>
     )
   }
@@ -145,11 +149,7 @@ function MoneyWidget({ size }: { size: Size }) {
       )}
       <div className="flex flex-wrap items-center gap-2">
         <ButtonLink to="/money/new">Log an IOU</ButtonLink>
-        {needsOk > 0 && (
-          <ButtonLink to="/money" variant="highlight">
-            {needsOk} {needsOk === 1 ? 'IOU needs' : 'IOUs need'} your OK
-          </ButtonLink>
-        )}
+        {needsOk > 0 && <Tag tone="action">{needsOk} {needsOk === 1 ? 'IOU needs' : 'IOUs need'} your OK</Tag>}
       </div>
     </section>
   )
@@ -158,7 +158,7 @@ function MoneyWidget({ size }: { size: Size }) {
 function ActivityWidget({ size }: { size: Size }) {
   const { room, state } = useApp()
   const feed = state.activity
-    .filter((a) => a.roomId === room!.id && (a.kind === 'chore-done' || a.kind === 'chore-assigned' || a.kind === 'list-created'))
+    .filter((a) => a.roomId === room!.id && (a.kind === 'chore-done' || a.kind === 'chore-assigned' || a.kind === 'chore-accepted' || a.kind === 'list-created'))
     .slice(0, size === 'large' ? 10 : 3)
   return (
     <Section title="Room Activity">
@@ -185,11 +185,7 @@ function UpcomingWidget({ size, chores }: { size: Size; chores: Chore[] }) {
       ) : (
         <p className="text-body text-ink-muted">Nothing left to do around the room.</p>
       )}
-      {more > 0 && (
-        <Link to="/chores/overview" className="text-label text-ink-muted hover:text-ink">
-          + {more} more
-        </Link>
-      )}
+      {more > 0 && <p className="text-label text-ink-muted">+ {more} more in the house overview</p>}
     </>
   )
   const overviewLink = <Link to="/chores/overview" className="text-label underline">House overview</Link>
@@ -304,7 +300,9 @@ export function RoomHomePage() {
   const flagOn = useFlag('homeViews')
   const viewsOn = room?.id === demoRoomId ? isFlagOnForProject('homeViews') : flagOn
   const view = viewsOn ? (me!.homeView ?? 'personal') : null
-  const widgets = view ? homeViews[view].widgets : allWidgets
+  // Without the money flag, the money widget is left out of every view and layout.
+  const moneyOn = useFlag('money')
+  const widgets = (view ? homeViews[view].widgets : allWidgets).filter((w) => moneyOn || w !== 'money')
   const defaultLayout = view ? homeViews[view].defaultLayout : defaultHomeLayout
   const layout = normalizeHomeLayout(view ? me!.homeViews?.[view] : me!.home, widgets, defaultLayout)
 
@@ -349,6 +347,8 @@ export function RoomHomePage() {
           </Button>
         )}
       </header>
+
+      <Updates />
 
       {view && <ViewToggle view={view} onChange={setHomeView} />}
 

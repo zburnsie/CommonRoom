@@ -39,11 +39,12 @@ A clickable low-fidelity prototype of the roommate happy path: onboarding, share
 - **Reset**: clear everything and start from the homepage.
 - **Feature flags**: turn unfinished features on or off in this browser (see below).
 
-**Feature flags.** Flags live in `src/lib/flags.ts`. Each one is off unless its `VITE_FLAG_<NAME>` env var is `true` (for example `VITE_FLAG_HOME_VIEWS=true npm run dev`, or set it in Vercel), and the checkbox in the prototype bar overrides that in your browser. The demo room ignores the checkbox and only follows the env var. Deployed builds also read `.env.production`, which currently turns on `VITE_FLAG_HOME_VIEWS`; delete that line to deploy the original home again.
+**Feature flags.** Flags live in `src/lib/flags.ts`. Each one is off unless its `VITE_FLAG_<NAME>` env var is `true` (for example `VITE_FLAG_HOME_VIEWS=true npm run dev`, or set it in Vercel), and the checkbox in the prototype bar overrides that in your browser. The demo room ignores the Personal / shared checkbox and only follows its env var; the Money checkbox applies everywhere, demo room included. Deployed builds also read `.env.production`, which currently turns on `VITE_FLAG_HOME_VIEWS`; delete that line to deploy the original home again.
 
 | Flag | Env var | What it does |
 | --- | --- | --- |
 | Personal / shared home | `VITE_FLAG_HOME_VIEWS` | Adds a Personal / Shared toggle to the room home. Personal shows your chores and IOUs; Shared shows upcoming chores around the room and room activity. Each view is customized on its own. |
+| Money / IOUs | `VITE_FLAG_MONEY` | Off by default. Shows the Money page, the money home widget, IOU activity and inbox items. When off, all of that is hidden and `/money/*` redirects to `/room`. No money code is removed. |
 
 Sign-in is simulated: passwords aren't checked or saved, and "Continue with your school account" just asks for a `.edu` email.
 
@@ -62,7 +63,7 @@ Sign-in is simulated: passwords aren't checked or saved, and "Continue with your
 | 7 | Join with a code (invite links `/join/CODE` land here) | `/welcome/join` |
 | 8 | Invite roommates (link / code) | `/welcome/invite`, `/room/invite` |
 | | **Room** | |
-| 9 | Room home: your chores, balance, IOUs to confirm, activity. **Customize** picks which is biggest, the order of the rest, and what to hide (saved per roommate) | `/room` |
+| 9 | Room home: **Updates** (unread notifications and reminders, hidden when there are none), your chores, balance, IOUs to confirm, activity. **Customize** picks which is biggest, the order of the rest, and what to hide (saved per roommate) | `/room` |
 | | **2. Shared chores** | |
 | 10 | Areas (kitchen, a shared bathroom…) and who shares each | `/chores` |
 | 11 | House overview: progress, chores done per roommate, what's still to do and whose turn | `/chores/overview` |
@@ -73,20 +74,25 @@ Sign-in is simulated: passwords aren't checked or saved, and "Continue with your
 | 16 | Assign roommate and rotation, from the area's roommates (assignee is notified) | `/chores/:choreId/assign` |
 | 17 | Chore detail: mark complete, rotation, done so far | `/chores/:choreId` |
 | 18 | Chore done: room sees it, next person in rotation | `/chores/:choreId/done` |
-| | **3. Money and IOUs** | |
+| | **3. Money and IOUs** (behind the `money` flag; redirect to `/room` when it's off) | |
 | 19 | Balances: who owes whom | `/money` |
 | 20 | Log an IOU ($ or "a dinner") | `/money/new` |
 | 21 | IOU detail: roommate confirms, declines, or suggests a different amount | `/money/ious/:iouId` |
 | 22 | Settle up: both mark as paid | `/money/settle/:userId` |
 | | **Other** | |
-| 23 | Inbox (notifications) | `/inbox` |
-| 24 | Profile and room settings | `/settings` |
+| 23 | Profile and room settings | `/settings` |
+
+`/inbox` used to be its own page; it now redirects to `/room`, where unread items show as Updates.
 
 **How areas work:** chores are grouped into areas, like the kitchen or a bathroom. An area is shared by everyone in the room (including roommates who join later) or just the roommates you pick, and only they are offered when assigning its chores or setting up a rotation. In the code an area is a `ChoreList` with `memberIds` (empty means everyone).
 
 **How tracking works:** every time a chore is marked complete it's saved as a `ChoreCompletion`: who did it, whose turn it was, and whether it was on time. The house overview, each area's "Done" list and each chore's "Done so far" are built from these. History starts when this was added; older completions weren't recorded.
 
 **How rotation works:** a repeating chore has a rotation (who takes turns, in room order). Marking it complete moves the due date forward and hands it to the next person, who gets notified. One-off chores just stay done.
+
+**How assigning works:** assigning a chore to yourself is immediate. Assigning it to someone else sends them a request (Accept / Decline in Updates on their room home, or on the chore). Until they accept it shows as "Waiting on <Name>" and doesn't count as theirs or as late; declining makes it unassigned again and tells whoever asked. For repeating chores, "Rotate between roommates" is the default with everyone in the area preselected; only the first person accepts, and later turns pass along on their own. Use "Acting as" in the prototype bar (on the homepage) to answer a request as the other roommate.
+
+**Late chores and reminders:** a missed chore shows as late only to its assignee for 2 days (`LATE_GRACE_DAYS` in `src/lib/chores.ts`); roommates see it as "due" until then. Common Room adds a reminder to your Updates when one of your chores is due today or tomorrow, or late (one per chore per day). Roommates can also send an anonymous reminder, once a day per chore.
 
 **How IOUs work:** whoever logs an IOU sends it to the other roommate to confirm; it only counts toward balances once confirmed. Instead of confirming, they can decline it or suggest a different amount (or a different favor), which goes back to the first roommate to confirm. This can go back and forth until one of them confirms or declines. To settle up, each of you marks it paid; it clears once both have.
 
@@ -103,7 +109,7 @@ src/
     onboarding/       Profile, create/join room, invite
     room/             Room home, settings
     chores/           Lists, add, assign, detail, done
-    money/            Balances, log IOU, IOU detail, settle up, inbox
+    money/            Balances, log IOU, IOU detail, settle up
   data/
     types.ts          User, Room, ChoreList (area), Chore, ChoreCompletion, Iou, Activity types
     seed.ts           Empty state and the demo room
